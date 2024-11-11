@@ -7,3 +7,6 @@ from account.models import User
 class JobSeeker(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     resume = models.FileField(upload_to='resumes/')
+    # json field for the resume creation
+    # resumse = models.JSONField(default=dict)
+

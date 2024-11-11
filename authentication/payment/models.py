@@ -1,8 +1,14 @@
 from django.db import models
 # local import
 from account.models import User
+from employer.models import Employer
+from requests.utils import default_user_agent
+
 
 # Create your models here.
 class Payment(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    employer = models.ForeignKey(Employer, on_delete=models.CASCADE)
+    checkout_at = models.DateTimeField()
+
+
 

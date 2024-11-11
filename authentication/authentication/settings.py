@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'payment',
     'employer',
     'job_seeker',
+    'package',
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',

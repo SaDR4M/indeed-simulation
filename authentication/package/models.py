@@ -4,11 +4,11 @@ from django.db import models
 from django.contrib.auth import get_user_model
 
 from authentication.employer.models import Employer
+from authentication.payment.models import Payment
 
 # Create your models here.
-Payment = get_user_model()
-Employer = get_user_model()
 
+# packages that admins make for employers
 class Package(models.Model) :
 
     class PackagePriority(models.IntegerChoices):
@@ -19,7 +19,7 @@ class Package(models.Model) :
         OFFER = 0 , 'offer'
         RESUME = 1 , 'resume'
 
-    employer = models.ForeignKey(Employer , on_delete=models.CASCADE)
+    employer = models.ManyToManyField(Employer , on_delete=models.CASCADE)
     payment = models.ForeignKey(Payment , on_delete=models.CASCADE)
     price = models.DecimalField(max_digits=10, decimal_places=2 , default=100000.00)
     count = models.IntegerField(default=1)

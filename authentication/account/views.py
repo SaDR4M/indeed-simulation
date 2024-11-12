@@ -73,7 +73,7 @@ class SignIn(APIView):
 
 
 
-# add credentials info
+# add/update credentials info
 class UpdateCredential(APIView) :
     permission_classes = [IsAuthenticated]
 
@@ -129,7 +129,7 @@ class UpdateCredential(APIView) :
 
 
 
-
+# to get the otp 
 class GetOtp(APIView) :
 
     @swagger_auto_schema(

@@ -1,8 +1,9 @@
+
 from django.db import models
+from django.contrib.auth import get_user_model
 # local import
-from authentication.package.models import Package
-
-
+# from package.models import Package
+Package = get_user_model()
 
 
 

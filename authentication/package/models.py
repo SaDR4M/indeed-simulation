@@ -1,10 +1,11 @@
 from django.db import models
+from django.contrib.auth import get_user_model
 # local import
-# from payment.models import Payment
+
 from django.contrib.auth import get_user_model
 
-from authentication.employer.models import Employer
-from authentication.payment.models import Payment
+Employer = get_user_model()
+Payment = get_user_model()
 
 # Create your models here.
 
@@ -19,7 +20,7 @@ class Package(models.Model) :
         OFFER = 0 , 'offer'
         RESUME = 1 , 'resume'
 
-    employer = models.ManyToManyField(Employer , on_delete=models.CASCADE)
+    employer = models.ManyToManyField(Employer , related_name="employers")
     payment = models.ForeignKey(Payment , on_delete=models.CASCADE)
     price = models.DecimalField(max_digits=10, decimal_places=2 , default=100000.00)
     count = models.IntegerField(default=1)

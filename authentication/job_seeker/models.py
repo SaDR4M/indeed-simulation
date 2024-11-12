@@ -1,14 +1,15 @@
 from django.db import models
+from django.contrib.auth import get_user_model
 # local import
 from account.models import User
-from authentication.employer.models import JobOpportunity
-
+#from authentication.employer.models import JobOpportunity
+JobOpportunity = get_user_model()
 # Create your models here.
 
 # specifc information about the job seeker
 class JobSeeker(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    bio = models.TextField(blank=True , Null=True)
+    bio = models.TextField(blank=True , null=True)
     created_at = models.DateTimeField(auto_created=True)
 
 

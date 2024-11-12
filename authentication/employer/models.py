@@ -1,7 +1,11 @@
 from django.db import models
-     # local import
+from django.contrib.auth import get_user_model
+
+# local import
 from account.models import User
-from package.models import Package
+# from package.models import Package
+Package = get_user_model()
+
     # Create your models here.
 
 # extra information about the employer
@@ -9,7 +13,6 @@ class Employer(models.Model):
 
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     company_name = models.CharField(max_length=100)
-    package = models.ManyToManyField(Package , related_name='packages')
     
 # opportunity that employer makes
 class JobOpportunity(models.Model):

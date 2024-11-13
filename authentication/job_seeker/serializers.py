@@ -14,3 +14,9 @@ class ResumeSerializer(serializers.ModelSerializer):
         model = Resume
         exclude = ['job_seeker']
         # fields = "__all__"
+
+class ApplicationSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(required=True)
+    class Meta:
+        model = Application
+        exclude = ['job_seeker' , 'job_opportunity']

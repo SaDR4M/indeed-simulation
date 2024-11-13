@@ -26,8 +26,9 @@ class EmployerRegister(APIView) :
 
     def post(self , request) :
         # check if the employer exist or not
-        if Employer.objects.filter(user=request.user).exists() :
-            return Response(data={"detail" : "Employer exists"})
+        employer = Employer.objects.filter(user=request.user)
+        if employer.exists() :
+            return Response(data={"detail" : "Employer exists"} , status=status.HTTP_400_BAD_REQUEST)
         serializer = EmployerSerializer(data=request.data)
         if serializer.is_valid() :
             data = serializer.validated_data

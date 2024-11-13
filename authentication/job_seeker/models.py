@@ -3,7 +3,8 @@ from django.contrib.auth import get_user_model
 # local import
 from account.models import User
 #from authentication.employer.models import JobOpportunity
-JobOpportunity = get_user_model()
+# JobOpportunity = get_user_model()
+from employer.models import JobOpportunity
 # Create your models here.
 
 # specific information about the job seeker
@@ -33,11 +34,11 @@ class Application(models.Model) :
         INTERVIEW = 3 , 'interview'
         ACCEPTED = 4 , 'accepted'
 
-    job_seeker = models.ForeignKey(JobSeeker, on_delete=models.CASCADE)
-    job_opportunity = models.ForeignKey(JobOpportunity , on_delete=models.CASCADE)
+    job_seeker = models.ForeignKey(JobSeeker, on_delete=models.CASCADE , related_name='seeker_applications')
+    job_opportunity = models.ForeignKey(JobOpportunity , on_delete=models.CASCADE , related_name='offer_applications')
     send_at = models.DateTimeField(auto_now_add=True)
     status = models.IntegerField(choices=ApplicationStatus.choices, default=ApplicationStatus.SENT)
-    description = models.TextField()
+    description = models.TextField(null=True , blank=True)
     
  
 

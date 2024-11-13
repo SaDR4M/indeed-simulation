@@ -6,22 +6,23 @@ from account.models import User
 JobOpportunity = get_user_model()
 # Create your models here.
 
-# specifc information about the job seeker
+# specific information about the job seeker
 class JobSeeker(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE , related_name='job_seeker')
     bio = models.TextField(blank=True , null=True)
-    created_at = models.DateTimeField(auto_created=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    birthday = models.DateField()
 
 
 # resume of the job seeker
 class Resume(models.Model) :
-    job_seeker = models.ForeignKey(JobSeeker , on_delete=models.CASCADE)
-    file = models.FileField(upload_to='resumes/')
-    created_at = models.DateTimeField(auto_created=True)
+    job_seeker = models.ForeignKey(JobSeeker , on_delete=models.CASCADE , related_name='resumes')
+    file = models.FileField(upload_to='resumes/' , null=True , blank=True )
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    skills = models.JSONField(default=dict, blank=True , null=True)
-    exprience = models.TextField(blank=True , null=True)
-    education = models.TextField(blank=True , null=True)
+    skills = models.JSONField(default=dict)
+    experience = models.TextField(max_length=200)
+    education = models.TextField(max_length=200)
     
 # job seeker apply for job
 class Application(models.Model) :

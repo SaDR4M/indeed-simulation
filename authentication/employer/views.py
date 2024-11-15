@@ -10,7 +10,6 @@ from . import serializers
 from .serializers import EmployerSerializer , JobOpportunitySerializer
 from .models import Employer, JobOpportunity
 
-
 # Create your views here.
 
 class EmployerRegister(APIView) :
@@ -20,7 +19,7 @@ class EmployerRegister(APIView) :
         if not employer.exists():
             return Response(data={"detail" : "there is no employer assign to this user"})
 
-        serializer = EmployerSerializer(employer)
+        serializer = EmployerSerializer(employer[0])
         return Response(data={"detail" : serializer.data} , status=status.HTTP_200_OK)
 
 
@@ -46,7 +45,7 @@ class JobOffer(APIView) :
         if not employer.exists():
             return Response(data={"detail" : "employer does not exists"} , status=status.HTTP_404_NOT_FOUND)
         # check for offers to exist
-        job_opportunities = JobOpportunity.objects.filter(employer=employer)
+        job_opportunities = JobOpportunity.objects.filter(employer=employer[0])
         if not job_opportunities.exists():
             return Response(data={"detail" : "there is no opportunity for this employer"})
 
@@ -64,7 +63,7 @@ class JobOffer(APIView) :
         serializer = JobOpportunitySerializer(data=request.data)
         if serializer.is_valid() :
             data = serializer.validated_data
-            data['employer'] = employer
+            data['employer'] = employer[0]
             serializer.save()
             return Response(data={"detail" : "Job Opportunity created successfully"} , status=status.HTTP_201_CREATED)
         return Response(data={"errors" : serializer.errors} , status=status.HTTP_200_OK)

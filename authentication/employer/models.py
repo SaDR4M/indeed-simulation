@@ -27,7 +27,7 @@ class JobOpportunity(models.Model):
     active = models.BooleanField(default=True)
     title = models.CharField(max_length=100)
     description = models.TextField(max_length=500)
-    created_at = models.DateTimeField(auto_created=True )
+    created_at = models.DateTimeField(auto_now_add=True)
     # changed the type of this column manually in the DB
     expire_at = models.DateField()
 

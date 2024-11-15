@@ -77,31 +77,32 @@ class ResumeRegister(APIView) :
 
 
 class ApplyForJob(APIView):
-    def post(self, request):
+    def post(self , request) :
         user = request.user
-
-        # Check that the job seeker exists
-        try:
+        # check that user is asign to job seeker
+        try :
             job_seeker = JobSeeker.objects.get(user=user)
-        except JobSeeker.DoesNotExist:
-            return Response({"detail": "There is no job seeker assigned to this user"},status=status.HTTP_404_NOT_FOUND)
-
+        except JobSeeker.DoesNotExist :
+            return Response(data={"detail" : "there is no job seeker asign to this user"} , status=status.HTTP_404_NOT_FOUND)
+        
         serializer = ApplicationSerializer(data=request.data)
-        data = request.data
-        # ensure that id is int
-        job_opportunity_pk = int(data['id'])
-        job_opportunity = JobOpportunity.objects.filter(pk=job_opportunity_pk)
-
-        if not job_opportunity.exists() :
-            return Response(data={"detail" : "the job opportunity does not exist"}, status=status.HTTP_404_NOT_FOUND)
-
-        print(job_opportunity[0])
-        if serializer.is_valid():
-            Application.objects.create(job_seeker=job_seeker, job_opportunity=job_opportunity[0])
-            return Response({"detail": "application for the job was successfully"},status=status.HTTP_201_CREATED)
-
-        return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-
+        if serializer.is_valid() :
+            data = serializer.validated_data
+            job_opportunity_pk = data['id']
+            try :
+                job_opportunity = JobOpportunity.objects.get(pk=job_opportunity_pk)
+            except JobOpportunity.DoesNotExist :
+                return Response(data={"detail"  : "job opportunity with this id does not exist"})
+            data['job_seeker'] = job_seeker
+            data['job_opportunity'] = job_opportunity
+            serializer.save()
+            return Response(data={"detail" : "job application was successfull"} , status=status.HTTP_201_CREATED)
+        
+        return Response(status=status.HTTP_400_BAD_REQUEST)   
+    
+    
+    
+    
     def get(self, request):
         user = request.user
         try :
@@ -127,3 +128,5 @@ class AppliesForJob(APIView):
             return Response(data={"detail" : "there is apply for this job"} , status=status.HTTP_404_NOT_FOUND)
         serializer = ApplicationSerializer(applications, many=True)
         return Response(data={"detail" : serializer.data}, status=status.HTTP_200_OK)
+    
+

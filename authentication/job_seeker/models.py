@@ -24,6 +24,8 @@ class Resume(models.Model) :
     skills = models.JSONField(default=dict)
     experience = models.TextField(max_length=200)
     education = models.TextField(max_length=200)
+
+
     
 # job seeker apply for job
 class Application(models.Model) :

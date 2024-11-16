@@ -13,11 +13,11 @@ class PackageSerializer(serializers.ModelSerializer) :
         model = Package
         fields = '__all__'
 
-# `class PurchasePackageSerializer(serializers.ModelSerializer) :
-#     package = serializers.PrimaryKeyRelatedField(queryset=Package.objects.all())
-#     payment = serializers.PrimaryKeyRelatedField(queryset=Payment.objects.all())
-#     # employer = serializers.PrimaryKeyRelatedField(queryset=Employer.objects.all())
-#     class Meta :
-#         model = PurchasedPackage
-#         # fields = '__all__'
-#         exclude = ['employer']`
+class PurchasePackageSerializer(serializers.ModelSerializer) :
+    package = serializers.PrimaryKeyRelatedField(queryset=Package.objects.all())
+    payment = serializers.PrimaryKeyRelatedField(queryset=Payment.objects.all())
+    # employer = serializers.PrimaryKeyRelatedField(queryset=Employer.objects.all())
+    class Meta :
+        model = PurchasedPackage
+        # fields = '__all__'
+        exclude = ['employer']

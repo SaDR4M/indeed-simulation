@@ -2,10 +2,8 @@ from django.db import models
 from django.contrib.auth import get_user_model
 # local import
 
-from django.contrib.auth import get_user_model
-
-Employer = get_user_model()
-Payment = get_user_model()
+from employer.models import Employer
+from payment.models import Payment
 
 # Create your models here.
 
@@ -27,7 +25,7 @@ class Package(models.Model) :
     active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(blank=True, null=True)
-    
+
 
 
 class PurchasedPackage(models.Model) : 

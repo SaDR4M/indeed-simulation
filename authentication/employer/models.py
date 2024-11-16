@@ -3,9 +3,7 @@ from django.contrib.auth import get_user_model
 import datetime
 # local import
 from account.models import User
-
 # from package.models import Package
-Package = get_user_model()
     
 # Create your models here.
 

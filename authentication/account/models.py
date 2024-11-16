@@ -1,4 +1,3 @@
-from multiprocessing.managers import Value
 
 from django.core.validators import RegexValidator
 from django.db import models
@@ -43,7 +42,7 @@ class User(AbstractUser) :
 
     username = None
 
-    phone = models.CharField(max_length=11, unique=True, blank=True, null=False , validators=[phone_validator] , primary_key=True )
+    phone = models.CharField(max_length=15, unique=True, blank=True, null=False , validators=[phone_validator] , primary_key=True )
     email = models.EmailField(unique=True, blank=True, null=True)
     password = models.CharField(max_length=128, blank=True, null=True)
 

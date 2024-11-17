@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 
 from employer.models import Employer
 from payment.models import Payment
-
+from account.models import User
 # Create your models here.
 
 # packages that admins make for employers
@@ -17,7 +17,7 @@ class Package(models.Model) :
     class PackageType(models.IntegerChoices):
         OFFER = 0 , 'offer'
         RESUME = 1 , 'resume'
-        
+    user = models.ForeignKey(User , on_delete=models.CASCADE , related_name="packages")   
     price = models.DecimalField(max_digits=10, decimal_places=2)
     count = models.IntegerField(default=1)
     priority = models.IntegerField(choices=PackagePriority.choices, default=PackagePriority.NORMAL)

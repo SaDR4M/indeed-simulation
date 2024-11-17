@@ -18,7 +18,7 @@ class JobSeeker(models.Model):
 # resume of the job seeker
 class Resume(models.Model) :
     job_seeker = models.ForeignKey(JobSeeker , on_delete=models.CASCADE , related_name='resumes')
-    file = models.FileField(upload_to='resumes/' , null=True , blank=True )
+    file = models.FileField(upload_to='resumes/' , null=True , blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     skills = models.JSONField(default=dict)

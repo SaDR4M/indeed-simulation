@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from guardian.shortcuts import assign_perm
+from rest_framework.parsers import MultiPartParser, FormParser
 # local imports
 from employer.models import JobOpportunity
 from .models import JobSeeker, Resume , Application
@@ -62,6 +63,8 @@ class JobSeekerRegister(APIView) :
 
 class ResumeRegister(APIView) :
 
+    parser_classes = [MultiPartParser] 
+    
     def get(self , request):
         user = request.user
         # get the user
@@ -80,9 +83,10 @@ class ResumeRegister(APIView) :
 
         serializer = ResumeSerializer(resume, many=True)
         return Response(data={"detail" : serializer.data}, status=status.HTTP_200_OK)
-
+    
     def post(self , request) :
         user = request.user
+        print(request.FILES , request.data)
         job_seeker = JobSeeker.objects.filter(user=user)
         # return if job seeker does not exists
         if not job_seeker :
@@ -104,6 +108,7 @@ class ResumeRegister(APIView) :
 
     def patch(self , request):
         user = request.user
+        print(request.data)
         try :
             job_seeker = JobSeeker.objects.get(user=user)
         except JobSeeker.DoesNotExist :
@@ -116,10 +121,8 @@ class ResumeRegister(APIView) :
             return Response(data={"detail" : "user does not have permission to change this resume"} , status=status.HTTP_403_FORBIDDEN)
         serializer = ResumeSerializer(resume, data=request.data ,partial=True)
         if serializer.is_valid() :
-            data = serializer.validated_data
-            data['job_seeker'] = job_seeker
-            resume.save()
-            return Response(data={"detail" : "resume updated successfully"} , status=status.HTTP_201_CREATED)
+            serializer.save(job_seeker=job_seeker)
+            return Response(data={"detail" : "resume updated successfully"} , status=status.HTTP_200_OK)
         return Response(data={"errors" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 

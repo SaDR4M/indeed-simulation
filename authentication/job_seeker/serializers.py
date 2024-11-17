@@ -1,5 +1,6 @@
 # third party imports
 from rest_framework import serializers
+from rest_framework.parsers import MultiPartParser, FormParser
 # local imports
 from .models import JobSeeker , Resume , Application
 
@@ -10,6 +11,7 @@ class JobSeekerSerializer(serializers.ModelSerializer):
         # fields = '__all__'
 
 class ResumeSerializer(serializers.ModelSerializer):
+    file = serializers.FileField(required=False)
     class Meta :
         model = Resume
         exclude = ['job_seeker']

@@ -73,7 +73,7 @@ class PurchasePackage(APIView) :
             package = data['package']
             payment_status = payment.status
             if payment_status == "completed" :
-                serializer.save(employer=employer , payment=payment , package=package)
+                purchased = serializer.save(employer=employer , payment=payment , package=package)
                 return Response(data={"detail" : "Purchase was successfull"} , status=status.HTTP_201_CREATED)
             return Response(data={"detail" : f" faild ,  purchase status : {payment_status}"} , status=status.HTTP_400_BAD_REQUEST)
         return Response(data={"detail" : serializer.errors } , status=status.HTTP_400_BAD_REQUEST)

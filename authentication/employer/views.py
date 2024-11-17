@@ -14,7 +14,7 @@ from .serializers import EmployerSerializer , JobOpportunitySerializer
 from .models import Employer, JobOpportunity
 from job_seeker.utils import assign_base_permissions
 from . import serializers
-
+from . import utils
 # Create your views here.
 
 class EmployerRegister(APIView) :
@@ -86,15 +86,26 @@ class JobOffer(APIView) :
 
     def post(self , request) :
         user = request.user
-        employer = Employer.objects.filter(user=user)
-
+        package_purchase_id = request.data.get('package_purchase_id')
+        
+        if not package_purchase_id :
+            return Response(data={"detail" : "enter the purchased package"})
+        
         # check for employer to exist
-        if not employer.exists():
+        try :
+            employer = Employer.objects.get(user=user)
+        except Employer.DoesNotExist :
             return Response(data={"detail" : "employer does not exists"} , status=status.HTTP_404_NOT_FOUND)
-
+        # check that user can make offer or not
+        if not utils.can_create_offer(employer , int(package_purchase_id)) :
+            return Response(data={"detail" : "there is no purchase package for this user" , "success" : False} , status=status.HTTP_404_NOT_FOUND)
+        # check the remaining count of request pacakge
+        if not utils.check_package_remaining(employer , package_purchase_id) : 
+            return Response(data={"detail" : "there is no remaining for this package"} , status=status.HTTP_404_NOT_FOUND)
+        # save the date
         serializer = JobOpportunitySerializer(data=request.data)
         if serializer.is_valid() :
-            offer = serializer.save(employer=employer[0])
+            offer = serializer.save(employer=employer)
             # assign permission to the user for its own object
             assign_perm("view_jobopportunity" , user , offer)
             assign_perm("change_jobopportunity" , user , offer)
@@ -104,9 +115,9 @@ class JobOffer(APIView) :
 
     def patch(self , request) :
         user = request.user
-        offer_id = request.data['offer_id']
+        offer_id = request.data.get('offer_id')
         if not offer_id :
-            return Response(data={"detail" : "offer id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+            return Response(data={"detail" : "offer_id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
         try :
             employer = Employer.objects.get(user=user)
         except Employer.DoesNotExist :

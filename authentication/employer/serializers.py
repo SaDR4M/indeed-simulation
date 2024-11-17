@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 # local import
 from employer.models import Employer , JobOpportunity
-
+from package.models import PurchasedPackage
 
 class EmployerSerializer(serializers.ModelSerializer) :
     class Meta :
@@ -12,6 +12,7 @@ class EmployerSerializer(serializers.ModelSerializer) :
         exclude = ['user']
 
 class JobOpportunitySerializer(serializers.ModelSerializer) :
+    # package_purchase_id = serializers.PrimaryKeyRelatedField(queryset=PurchasedPackage.objects.all())
     class Meta :
         model = JobOpportunity
         exclude = ['employer']

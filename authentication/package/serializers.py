@@ -28,7 +28,7 @@ class PackageSerializer(serializers.ModelSerializer) :
             if not count :
                 raise ValidationError("count must be entered")
         if package_type == 1 and priority == 1 :
-            raise ValidationError('resume can not have priority')
+            raise ValidationError('package can not have priority')
         return attrs
 
 class PurchasePackageSerializer(serializers.ModelSerializer) :
@@ -36,7 +36,7 @@ class PurchasePackageSerializer(serializers.ModelSerializer) :
     payment = serializers.PrimaryKeyRelatedField(queryset=Payment.objects.all())
     class Meta :
         model = PurchasedPackage
-        exclude = ['employer']
+        exclude = ['employer' ,'price' , 'remaining']
     
     def validate_payment(self , attr) :
         user = self.context.get('request').user

@@ -173,6 +173,11 @@ class ApplyForJob(APIView):
                 job_opportunity = JobOpportunity.objects.get(pk=job_opportunity_pk)
             except JobOpportunity.DoesNotExist :
                 return Response(data={"detail"  : "job opportunity with this id does not exist"})
+            apply = Application.objects.filter(job_seeker=job_seeker , job_opportunity=job_opportunity)
+            
+            if apply.exists() : 
+                return Response(data={"detial" : "job seeker applied for this job before"} , status=status.HTTP_400_BAD_REQUEST)
+            
             data['job_seeker'] = job_seeker
             data['job_opportunity'] = job_opportunity
             application = serializer.save()
@@ -181,7 +186,7 @@ class ApplyForJob(APIView):
             assign_perm('delete_application' , user , application)
             return Response(data={"detail" : "job application was successfull"} , status=status.HTTP_201_CREATED)
 
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response(data={"errors" : serializer.errors} , status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self , request):
         user = request.user

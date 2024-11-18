@@ -58,6 +58,23 @@ class CreatePackage(APIView) :
         
 class PurchasePackage(APIView) :
     
+    def get(self , request) :
+        user = request.user
+        
+        employer = Employer.objects.filter(user=user)
+        if not employer.exists() :
+            return Response(data={"detail" : "employer does not exists"} , status=status.HTTP_400_BAD_REQUEST)
+        
+        purchased = PurchasedPackage.objects.filter(employer = employer.first())
+        if not purchased.exists() :
+            return Response(data={"detail" : "there is purchased pacakge for this user"})
+        
+        serializer = PurchasePackageSerializer(purchased , many=True)
+        return Response(data={"success" : True , "data" : serializer.data } , status=status.HTTP_200_OK)
+    
+    
+    
+    
     def post(self , request) :
         user = request.user
         print(user)

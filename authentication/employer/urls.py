@@ -8,6 +8,6 @@ urlpatterns = [
     path('all-resumes/' , views.AllResumes.as_view() , name="all-resumes"),
     path('change-offer-status/' , views.ChangeJobOfferStatus.as_view() , name="change_offer_status"),
     path('job-applies/' , views.ResumesForOffer.as_view() , name="resume_applies"),
-    path('view-resume/' , views.ResumeViewer.as_view() , name="view_resume")
+    path('view-resume/' , views.ResumeViewer.as_view() , name="view_resume"),
 ]
     

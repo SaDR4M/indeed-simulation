@@ -1,6 +1,9 @@
 import datetime
 from functools import partial
 import stat
+from tkinter.scrolledtext import example
+from tkinter.tix import INTEGER
+from xmlrpc.client import boolean
 
 from django.shortcuts import render
 
@@ -10,7 +13,8 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK , HTTP_201_CREATED , HTTP_400_BAD_REQUEST ,HTTP_401_UNAUTHORIZED , HTTP_403_FORBIDDEN , HTTP_404_NOT_FOUND
 from guardian.shortcuts import assign_perm
 from account import serializer
-
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 # local imports
 from .serializers import EmployerSerializer , JobOpportunitySerializer  , ViewedResumeSerializer
 from .models import Employer, JobOpportunity, ViewedResume
@@ -22,18 +26,37 @@ from package.models import PurchasedPackage
 # Create your views here.
 
 class EmployerRegister(APIView) :
+    @swagger_auto_schema(
+    operation_summary="get employer infomartion",
+    operation_description="get the employer information if the user is employer",
+    responses= {
+        200 : EmployerSerializer,
+        400 : "invalid parameters",
+        403 : "does not have permission to get this data",
+        404 : "did't found the employer"
+        
+    }
+    )
     def get(self , request):
         user = request.user
         employer = Employer.objects.filter(user=user)
         if not employer.exists():
-            return Response(data={"detail" : "there is no employer assign to this user"})
+            return Response(data={"detail" : "there is no employer assign to this user"} , status=HTTP_404_NOT_FOUND)
         # check for the user permission
         if not user.has_perm('view_employer' , employer[0]) :
             return Response(data={"detail" : "user does not have permission to view this"} , status=HTTP_403_FORBIDDEN)
         serializer = EmployerSerializer(employer[0])
         return Response(data={"detail" : serializer.data} , status=HTTP_200_OK)
 
-
+    @swagger_auto_schema(
+        operation_summary="register employer",
+        operation_description="register the user if this user is not employer",
+        request_body= EmployerSerializer,
+        responses= {
+            201 : "employer created successfully",
+            400 : "invalid parameters",    
+        }
+    )
     def post(self , request) :
         # check if the employer exist or not
         user = request.user
@@ -48,9 +71,19 @@ class EmployerRegister(APIView) :
             assign_perm('view_employer' , user , employer)
             assign_perm('delete_employer' , user , employer)
             return Response(data={"detail" : "Employer registered successfully"}, status=HTTP_201_CREATED)
-        return Response(data={"errors" : serializer.errors} , status=HTTP_200_OK)
+        return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
 
-    
+    @swagger_auto_schema(
+        operation_summary="edit the employer information",
+        operation_description="change the information of the user if employer exists",
+        request_body=EmployerSerializer,
+        responses={
+            200 : EmployerSerializer,
+            400 : "invalid parameters",
+            404 : "employer was not found",
+            403 : "user doesn't have permission to change this data",
+        }
+    )
     def patch(self , request) :
         user = request.user
         try :
@@ -64,7 +97,7 @@ class EmployerRegister(APIView) :
         serializer = EmployerSerializer(employer , data=request.data , partial=True)
         if serializer.is_valid() :
             serializer.save(user=user)
-            return Response(data={"employer updated successfully"} , status=HTTP_200_OK)
+            return Response(data={"data" : serializer.data , "detail " : "employer updated successfully"} , status=HTTP_200_OK)
             
         return Response(data={serializer.errors} , status=HTTP_400_BAD_REQUEST) 
 
@@ -73,6 +106,17 @@ class EmployerRegister(APIView) :
     
     
 class JobOffer(APIView) :
+    
+    @swagger_auto_schema(
+        operation_summary="job opportunities that user has made",
+        operation_description="the opportunities that user has made",
+        responses= { 
+            200  : JobOpportunitySerializer,
+            400 : "invalid parameters",
+            403 :  "user does not have permission to see this data",
+            404 :  "employer was not found"
+        }
+    )
     def get(self , request):
         user = request.user
         # check for employer exist
@@ -86,8 +130,20 @@ class JobOffer(APIView) :
         if not user.has_perm('view_jobopportunity' , job_opportunities[0]) :
             return Response(data={"detail" : "user does not have permissions for this action"} , status=HTTP_403_FORBIDDEN)
         serializer = JobOpportunitySerializer(job_opportunities , many=True)
-        return Response(data={"detail" : serializer.data } , status=HTTP_200_OK)
-
+        return Response(data={"detail" : serializer.data } , status=HTTP_400_BAD_REQUEST)
+    
+    
+    @swagger_auto_schema(
+        operation_summary="create the job opportunity",
+        operation_description="create job opportunity if the employer exists and have active packages and the permission",
+        request_body=JobOpportunitySerializer,
+        responses={
+            200 : JobOpportunitySerializer,
+            400 : "invalid parameters",
+            404 : "employer was not found",
+            403 : "user doesn't have permission to change this data",
+        }
+    )
     def post(self , request) :
         user = request.user
         package_purchase_id = request.data.get('package_purchase_id')
@@ -121,6 +177,19 @@ class JobOffer(APIView) :
             return Response(data={"detail" : "Job Opportunity created successfully"} , status=HTTP_201_CREATED)
         return Response(data={"errors" : serializer.errors} , status=HTTP_200_OK)
 
+    
+    
+    @swagger_auto_schema(
+        operation_summary="edit the job opportunity",
+        operation_description="edit job opportunity if the employer exists and have active packages and the permission",
+        request_body=JobOpportunitySerializer,
+        responses={
+            200 : JobOpportunitySerializer,
+            400 : "invalid parameters",
+            404 : "employer was not found",
+            403 : "user doesn't have permission to change this data",
+        }
+    )
     def patch(self , request) :
         user = request.user
         offer_id = request.data.get('offer_id')
@@ -136,12 +205,26 @@ class JobOffer(APIView) :
         except JobOpportunity.DoesNotExist :
             return Response(data={"detail" : "not found"} , status=HTTP_404_NOT_FOUND)
         
+        if not user.has_perm('view_jobopportunity' , job_opportunity) :
+            return Response(data={"detail" : "user does not have permissions for this action"} , status=HTTP_403_FORBIDDEN)
         serializer = JobOpportunitySerializer(job_opportunity , data=request.data , partial=True)
         if serializer.is_valid() :
             serializer.save(employer=employer)
-            return Response(data={"detail" : "job offer updated succesfully"} , status=HTTP_200_OK)
+            return Response(data={"data" : serializer.data , "detail" : "job offer updated succesfully"} , status=HTTP_200_OK)
         return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
 
+    
+    @swagger_auto_schema(
+        operation_summary="delete the job opportunity",
+        operation_description="delete job opportunity if the employer exists and have active packages and the permission",
+        request_body=JobOpportunitySerializer,
+        responses={
+            200 : JobOpportunitySerializer,
+            400 : "invalid parameters",
+            404 : "employer was not found",
+            403 : "user doesn't have permission to change this data",
+        }
+    )
     def delete(self , request):
         user = request.user
         offer_id = request.data.get('offer_id')
@@ -161,18 +244,33 @@ class JobOffer(APIView) :
             return Response(data={"detail" : "offewr does not exists" } , status=HTTP_400_BAD_REQUEST)
         offer.update(active=False , expire_at = datetime.datetime.now().strftime('%Y-%m-%d'))
         return Response(data={"detail" : "deleted successfully" } , status=HTTP_200_OK)
-
-
+    
 class AllJobOffers(APIView) :
+
+    @swagger_auto_schema(
+        operation_summary="get all the job offers",
+        operation_description="ge all of the job offers that exist active/not active",
+        responses={
+            200 : "successfull",
+        })
     def get(self , request):
         job_opportunities = JobOpportunity.objects.all()
         serializer = JobOpportunitySerializer(job_opportunities , many=True)
         return Response(data={"detail" : serializer.data } , status=HTTP_200_OK)
     
     
-# see the resume that job seekers sent to the employer for specific    
+# view the resume that job seekers sent to the employer for specific    
 class ResumesForOffer(APIView) :
-    
+    @swagger_auto_schema(
+        operation_summary="view the resume for specific offer",
+        operation_description="view the resume that job seekers sent to a offer",
+        # request_body=,
+        responses={
+            200 : ApplicationSerializer,
+            400 : "invalid parameters",
+            404 : "employer/offeer was not found",
+        }
+    )
     def get(self , request) :
         user = request.user
         offer_id = request.data.get('offer_id')
@@ -199,7 +297,16 @@ class ResumesForOffer(APIView) :
     
 
 class AllResumes(APIView) : 
-    
+    @swagger_auto_schema(
+        operation_summary="view all the available resume",
+        operation_description="view the all the available resume don't matter they sent it to employer or not",
+        # request_body=,
+        responses={
+            200 : ResumeSerializer,
+            400 : "invalid parameters",
+            404 : "employer/offeer was not found",
+        }
+    )
     def get(self , request) : 
         user = request.user
         try :
@@ -218,6 +325,16 @@ class AllResumes(APIView) :
 
 # transfer the resume to the seen resumes and minus from the remaining 
 class ResumeViewer(APIView) :
+    @swagger_auto_schema(
+        operation_summary="transfer the resume that employer saw to viewed resume",
+        operation_description="transfer the resume to the viewed resume to know each employer saw what resumes avoiding duplicate",
+        request_body=ViewedResumeSerializer,
+        responses={
+            200 : "success",
+            400 : "invalid parameters",
+            404 : "employer/offeer was not found",
+        }
+    )
     def post(self , request) :
         user = request.user
         try :
@@ -252,7 +369,17 @@ class ResumeViewer(APIView) :
     
 # for admins
 class ChangeJobOfferStatus(APIView) :
-    
+    @swagger_auto_schema(
+        operation_id="change job offer status",
+        operation_summary="change the job opportunity status",
+        operation_description="only admins can change the job opportunity status",
+        request_body=JobOpportunitySerializer,
+        responses={
+            200 : JobOpportunitySerializer,
+            400 : "invalid parameters",
+            404 : "employer/offeer was not found",
+        }
+    )
     def patch(self , request) :
         user = request.user
         offer_id = request.data.get('offer_id')

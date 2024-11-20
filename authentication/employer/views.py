@@ -9,6 +9,8 @@ from guardian.shortcuts import assign_perm
 from account import serializer
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+
+from package.serializers import PackageSerializer
 # local imports
 from .serializers import EmployerSerializer , JobOpportunitySerializer  , ViewedResumeSerializer , ChangeApllyStatusSerializer
 from .models import Employer, JobOpportunity, ViewedResume
@@ -16,8 +18,8 @@ from job_seeker.utils import assign_base_permissions
 from . import utils
 from job_seeker.models import Resume , Application
 from job_seeker.serializers import ApplicationSerializer, ResumeSerializer
-from package.models import PurchasedPackage
-from .utils import can_create_offer
+from package.models import PurchasedPackage, Package
+from .utils import can_create_offer, employer_exists
 
 
 # Create your views here.
@@ -463,4 +465,29 @@ class ChangeJobOfferStatus(APIView) :
             return Response(data={"success" : True , "data" : serializer.data} , status=HTTP_200_OK)
         return Response(data={"success" : False , "errors" : serializer.errors} , status=HTTP_200_OK)
 
-    
+# admins change the price of the package
+# the package will be deleted and then with that package info and new price a new package will be created
+class ChangePackagePrice(APIView) :
+    def post(self , request):
+        user = request.user
+        package_id = request.data.get('package_id')
+        new_price = request.data.get('new_price')
+        if not new_price :
+            return Response(data={"detail" : "new price must be enetered"} , status=HTTP_400_BAD_REQUEST)
+        if not package_id :
+            return Response(data={"detail" : "package_id must be entered"} , status=HTTP_400_BAD_REQUEST)
+        if not user.is_superuser :
+            return Response(data={"detail" : "user does no have permission to do this action"} , status=HTTP_403_FORBIDDEN)
+        try :
+            package = Package.objects.get(pk = package_id)
+        except Package.DoesNotExist :
+            return Response(data={"detail" : "package does not exists"} , status=HTTP_404_NOT_FOUND)
+        package_data = PackageSerializer(package).data
+        package_data['price'] = new_price
+        package.active = False
+        package.save()
+        serializer = PackageSerializer(data=package_data)
+        if serializer.is_valid() :
+            serializer.save(user=user , active=True)
+            return Response(data={"detail" : "success"} , status=HTTP_200_OK)
+        return Response(data={"success" : False , "errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)

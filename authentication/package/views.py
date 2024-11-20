@@ -34,6 +34,18 @@ class CreatePackage(APIView) :
             return Response(data={"detail" : "user does not have permission to do this action"} ,status=status.HTTP_403_FORBIDDEN)
         serializer = PackageSerializer(data=request.data)
         if serializer.is_valid() :
+            count = serializer.validated_data['count']
+            type  = serializer.validated_data['type']
+
+            if type == "offer" :
+                priority = "normal"
+            else :
+                priority = serializer.validated_data['priority']
+
+            package = Package.objects.filter(type=type, priority=priority, count=count, active=True).count()
+
+            if package > 1:
+                return Response(data={"detail" : "with this count you can only have on active package , deactive the other packages to register this package"} , status=status.HTTP_400_BAD_REQUEST)
             serializer.save(user=user)
             return Response(data={"detail" : "Package created successfully"} , status=status.HTTP_201_CREATED)
         return Response(data={"errors" : serializer.errors } , status=status.HTTP_400_BAD_REQUEST)

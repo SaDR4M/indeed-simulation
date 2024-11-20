@@ -21,14 +21,20 @@ class PackageSerializer(serializers.ModelSerializer) :
         package_type = attrs.get('type')
         priority = attrs.get('priority')
         count = attrs.get('count')
+
         if package_type == "resume":
             if not priority :
                 raise ValidationError("priority must be entered")
-        if package_type == "offer" :
-            if not count :
-                raise ValidationError("count must be entered")
         if package_type == "offer" and priority == "urgent" :
             raise ValidationError('package can not have priority')
+        if package_type == "offer" :
+                priority = "normal"
+                # if not count :
+                #     raise ValidationError("count must be entered")
+        # limit the count. admin can not register package with the same count as the active packages if the type , priority are the same
+        # package = Package.objects.filter(type=package_type , priority= priority, count=count , active=True).count()
+        # if package > 1 :
+        #     raise ValidationError("with this count you can only have on active package , deactive the other packages to register this package")
         return attrs
 
 class PurchasePackageSerializer(serializers.ModelSerializer) :

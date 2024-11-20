@@ -6,14 +6,14 @@ from rest_framework import status
 # local imports
 from .serializers import PaymentSerializer
 from employer.models import Employer
+from employer.utils import employer_exists
 # Create your views here.
 
 class CreatePayment(APIView) :
     def post(self , request) :
         user = request.user
-        try :
-            employer = Employer.objects.get(user=user)
-        except Employer.DoesNotExist :
+        employer = employer_exists(user)
+        if not employer : 
             return Response(data={"detail" : "employer does not exists"} , status=status.HTTP_400_BAD_REQUEST)
         serializer = PaymentSerializer(data=request.data)
         if serializer.is_valid() : 

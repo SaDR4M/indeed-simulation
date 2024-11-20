@@ -19,9 +19,8 @@ class JobSeekerRegister(APIView) :
     def get(self, request):
         user = request.user
         # finding the job seeker information
-        try :
-            job_seeker = JobSeeker.objects.get(user=user)
-        except JobSeeker.DoesNotExist :
+        job_seeker = utils.job_seeker_exists(user)
+        if not job_seeker :
             return Response(data={"detail" : "there is no job seeker asign to this user"} , status=status.HTTP_404_NOT_FOUND)
         # get the job seeker information
         if not user.has_perm('view_job_seeker' , job_seeker ):
@@ -40,16 +39,15 @@ class JobSeekerRegister(APIView) :
             data = serializer.validated_data
             data['user'] = user
             job_seeker = serializer.save()
-            assign_perm('view_job_seeker' , user , job_seeker )
-            assign_perm('change_job_seeker' , user , job_seeker )
+            # assign base permission
+            utils.assign_base_permissions(user, job_seeker, "jobseeker")
             return Response(data={"detail" : "Job Seeker registered successfully"}, status=status.HTTP_201_CREATED)
         return Response(data={"errors" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self , request ) :
         user = request.user
-        try :
-            job_seeker = JobSeeker.objects.get(user=user)
-        except JobSeeker.DoesNotExist :
+        job_seeker = utils.job_seeker_exists(user)
+        if not job_seeker :
             return Response(data={"detail" : "job seeker does not exists for this user" } , status=status.HTTP_404_NOT_FOUND)
 
         if not user.has_perm('change_job_seeker' , job_seeker) :
@@ -68,17 +66,17 @@ class ResumeRegister(APIView) :
     def get(self , request):
         user = request.user
         # get the user
-        job_seeker = JobSeeker.objects.filter(user=user)
-
+        job_seeker = utils.job_seeker_exists(user)
         if not job_seeker :
             return Response(data={"detail" : "there is no job seeker asign to this user"} , status=status.HTTP_404_NOT_FOUND)
         # finding resume base on the job_seeker
-        resume = Resume.objects.filter(job_seeker=job_seeker[0])
+        try :
+            resume = Resume.objects.get(job_seeker=job_seeker)
         # check if the resume exist
-        if not resume.exists():
+        except Resume.DoesNotExist :
             return Response(data={"detail" : "there is no resume for this job seeker"} , status=status.HTTP_404_NOT_FOUND)
         # have permission to view the resume
-        if not user.has_perm('view_resume' , resume[0]) :
+        if not user.has_perm('view_resume' , resume) :
             return Response(data={"detail" : "user does not have permission to view this resume"} , status=status.HTTP_403_FORBIDDEN)
 
         serializer = ResumeSerializer(resume, many=True)
@@ -87,18 +85,18 @@ class ResumeRegister(APIView) :
     def post(self , request) :
         user = request.user
         print(request.FILES , request.data)
-        job_seeker = JobSeeker.objects.filter(user=user)
         # return if job seeker does not exists
+        job_seeker = utils.job_seeker_exists(user)
         if not job_seeker :
             return Response(data={"detail" : "there is no job seeker asgin to this user"} , status=status.HTTP_404_NOT_FOUND)
         # return if resume exists
-        if Resume.objects.filter(job_seeker=job_seeker[0]).exists() :
+        if Resume.objects.filter(job_seeker=job_seeker).exists() :
             return Response(data={"detail" : "Resume for this job seeker exist . please update it"})
         # create resume
         serializer = ResumeSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
-            data['job_seeker'] = job_seeker[0]
+            data['job_seeker'] = job_seeker
             resume = serializer.save()
             # assign the basic permission to the user
             # its better handle this in signals cause there is security problem if we create the resume and the assign does not work
@@ -109,9 +107,8 @@ class ResumeRegister(APIView) :
     def patch(self , request):
         user = request.user
         print(request.data)
-        try :
-            job_seeker = JobSeeker.objects.get(user=user)
-        except JobSeeker.DoesNotExist :
+        job_seeker = utils.job_seeker_exists(user)
+        if not job_seeker :
             return Response(data={"detail" : "job seeker does not exist"} , status=status.HTTP_404_NOT_FOUND)
         try :
             resume = Resume.objects.get(job_seeker=job_seeker)
@@ -128,9 +125,8 @@ class ResumeRegister(APIView) :
 
     def delete(self , request):
         user = request.user
-        try :
-            job_seeker = JobSeeker.objects.get(user=user)
-        except JobSeeker.DoesNotExist :
+        job_seeker = utils.job_seeker_exists(user)
+        if not job_seeker :
             return Response(data={"detail" : "job seeker does not exist"} , status=status.HTTP_404_NOT_FOUND)
         try :
             resume = Resume.objects.get(job_seeker=job_seeker)
@@ -144,25 +140,24 @@ class ResumeRegister(APIView) :
 class ApplyForJob(APIView):
 
     def get(self, request):
-        user = request.user
-        try :
-            job_seeker = JobSeeker.objects.get(user=user)
-        except User.DoesNotExist:
+        user = request.user 
+        job_seeker = utils.job_seeker_exists(user)
+        if not job_seeker :
             return Response(data={"detail" : "user does not exist"} , status=status.HTTP_404_NOT_FOUND)
+
         applications = Application.objects.filter(job_seeker=job_seeker)
         if not applications.exists() :
             return Response(data={"detail" : "there is no job application that this user has done"} , status=status.HTTP_404_NOT_FOUND)
-        if not user.has_perm('view_application' , applications[0]) :
-            return Response(data={"detail" "user does not have permission to view this job apply"} , status=status.HTTP_403_FORBIDDEN)
+        # if not user.has_perm('view_application' , applications) :
+        #     return Response(data={"detail" : "user does not have permission to view this job apply"} , status=status.HTTP_403_FORBIDDEN)
         serializer = ApplicationSerializer(applications, many=True)
         return Response(data={"detail" : serializer.data}, status=status.HTTP_200_OK)
 
     def post(self , request) :
         user = request.user
         # check that user is asign to job seeker
-        try :
-            job_seeker = JobSeeker.objects.get(user=user)
-        except JobSeeker.DoesNotExist :
+        job_seeker = utils.job_seeker_exists(user)
+        if not job_seeker :
             return Response(data={"detail" : "there is no job seeker asign to this user"} , status=status.HTTP_404_NOT_FOUND)
 
         serializer = ApplicationSerializer(data=request.data)
@@ -170,9 +165,10 @@ class ApplyForJob(APIView):
             data = serializer.validated_data
             job_opportunity_pk = data['id']
             try :
-                job_opportunity = JobOpportunity.objects.get(pk=job_opportunity_pk)
+                job_opportunity = JobOpportunity.objects.get(pk=job_opportunity_pk , status="approved")
             except JobOpportunity.DoesNotExist :
-                return Response(data={"detail"  : "job opportunity with this id does not exist"})
+                return Response(data={"detail"  : "job opportunity does not exist"})
+            
             apply = Application.objects.filter(job_seeker=job_seeker , job_opportunity=job_opportunity)
             
             if apply.exists() : 
@@ -190,14 +186,14 @@ class ApplyForJob(APIView):
 
     def delete(self , request):
         user = request.user
-        try :
-            job_seeker = JobSeeker.objects.get(user=user)
-        except User.DoesNotExist:
+        job_seeker = utils.job_seeker_exists(user)
+        if not job_seeker :
             return Response(data={"detail" : "user does not exist"} , status=status.HTTP_404_NOT_FOUND)
-        applications = Application.objects.filter(job_seeker=job_seeker)
-        if not applications.exists() :
+        try :
+            applications = Application.objects.get(job_seeker=job_seeker)
+        except Application.DoesNotExist :
             return Response(data={"detail" : "there is no job application that this user has done"} , status=status.HTTP_404_NOT_FOUND)
-        if not user.has_perm('delete_application' , applications[0]) :
+        if not user.has_perm('delete_application' , applications) :
             return Response(data={"detail" : "user does not have permission to delete this job apply"} , status=status.HTTP_403_FORBIDDEN)
         applications.delete()
         return Response(data={"detail" : "deleted succesfully"} , status=status.HTTP_200_OK)

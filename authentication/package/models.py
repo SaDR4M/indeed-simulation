@@ -10,18 +10,19 @@ from account.models import User
 # packages that admins make for employers
 
 class Package(models.Model) : 
-    class PackagePriority(models.IntegerChoices):
-        NORMAL = 0 , 'normal'
-        URGENT = 1 , 'urgent'
+    class PackagePriority(models.TextChoices):
+        NORMAL = 'normal' , 'Normal'
+        URGENT = 'urgent' , 'Urgent'
 
-    class PackageType(models.IntegerChoices):
-        OFFER = 0 , 'offer'
-        RESUME = 1 , 'resume'
+    class PackageType(models.TextChoices):
+        OFFER = 'offer' , 'Offer'
+        RESUME = 'resume' , 'Resume'
+
     user = models.ForeignKey(User , on_delete=models.CASCADE , related_name="packages")   
     price = models.DecimalField(max_digits=10, decimal_places=2)
     count = models.IntegerField()
-    priority = models.IntegerField(choices=PackagePriority.choices, default=PackagePriority.NORMAL)
-    type = models.IntegerField(choices=PackageType.choices, null=False)
+    priority = models.CharField(choices=PackagePriority.choices, default=PackagePriority.NORMAL)
+    type = models.CharField(choices=PackageType.choices, null=False)
     active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(blank=True, null=True)
@@ -42,9 +43,9 @@ class PurchasedPackage(models.Model) :
     def save(self , *args , **kwargs) :
         if self.pk is None :
             self.remaining = self.package.count
-            if self.package.type == 0 :
+            if self.package.type == "offer" :
                 self.price = self.package.price
-            if self.package.type == 1 :
+            if self.package.type == "resume" :
                 self.price = self.package.price * self.package.count
         super().save(*args , **kwargs)
     

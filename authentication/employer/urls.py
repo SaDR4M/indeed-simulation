@@ -9,5 +9,6 @@ urlpatterns = [
     path('change-offer-status/' , views.ChangeJobOfferStatus.as_view() , name="change_offer_status"),
     path('job-applies/' , views.ResumesForOffer.as_view() , name="resume_applies"),
     path('view-resume/' , views.ResumeViewer.as_view() , name="view_resume"),
+    path('change-apply-status/' , views.ChangeApplyStatus.as_view() , name="change_apply_status"),
 ]
     

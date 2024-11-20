@@ -16,6 +16,7 @@ class Payment(models.Model):
     total_price = models.DecimalField(max_digits=10 , decimal_places=2)
     checkout_at = models.DateTimeField(auto_now_add=True)
     employer = models.ForeignKey(Employer , on_delete=models.CASCADE)
+    #
     status = models.CharField(choices=PaymentStatus , default=PaymentStatus.PENDING)
 
 

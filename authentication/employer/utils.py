@@ -1,35 +1,29 @@
+
 # third party imports
-
-
+from datetime import datetime
 # local imports
-from struct import pack
-from package.models import PurchasedPackage
-from job_seeker.models import Application
 from employer.models import Employer
 from package.models import PurchasedPackage
 
 # can not make job opportunity if they do not have any packages
-def can_create_offer(employer , package_purchase_id) : 
-    purchased = PurchasedPackage.objects.filter(employer=employer ,  pk=package_purchase_id , active=True)
+def can_create_offer(employer , priority) :
+    purchased = PurchasedPackage.objects.filter(employer=employer , package__type="offer"  , package__priority=priority,  active=True).order_by('bought_at')
     if purchased.exists() :
-        return True
+        return purchased.first()
     return False
 
 
 
 # can not make job opportunity if their package is 0 ( not active) => when the user
-def check_package_remaining(employer , package_purchase_id)   :
-    try : 
-        purchased = PurchasedPackage.objects.get(employer=employer , pk=package_purchase_id)
-    except PurchasedPackage.DoesNotExist :
+def check_package_remaining(purchased_package)   :
+    if purchased_package.package.type == 1 :
         return False
-    if purchased.package.type == 1 :
+    remaining = purchased_package.remaining
+    if remaining == 0 or purchased_package.active == False:
+        purchased_package.active = False
+        purchased_package.deleted_at = datetime.now()
+        purchased_package.save()
         return False
-    remaining = purchased.remaining
-    if remaining == 0 :
-        return False
-    purchased.remaining -= 1
-    purchased.save()
     return True
 
 
@@ -41,3 +35,10 @@ def count_of_resume_to_check(employer) :
     for package in purchased_packages.all() :
         total += package.remaining
     return int(total)
+
+def employer_exists(user) :
+    try :
+        employer = Employer.objects.get(user=user)
+    except Employer.DoesNotExist :  
+        return False
+    return employer

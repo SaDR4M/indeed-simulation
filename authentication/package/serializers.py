@@ -21,13 +21,13 @@ class PackageSerializer(serializers.ModelSerializer) :
         package_type = attrs.get('type')
         priority = attrs.get('priority')
         count = attrs.get('count')
-        if package_type == 0:
+        if package_type == "resume":
             if not priority :
                 raise ValidationError("priority must be entered")
-        if package_type == 1 :
+        if package_type == "offer" :
             if not count :
                 raise ValidationError("count must be entered")
-        if package_type == 1 and priority == 1 :
+        if package_type == "offer" and priority == "urgent" :
             raise ValidationError('package can not have priority')
         return attrs
 

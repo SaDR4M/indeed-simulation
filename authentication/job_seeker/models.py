@@ -27,17 +27,18 @@ class Resume(models.Model) :
     
 # job seeker apply for job
 class Application(models.Model) :
-    class ApplicationStatus(models.IntegerChoices):
-        SENT = 0 , 'sent'
-        REJECTED = 1 , 'rejected'
-        SEEN = 2 , 'seen'
-        INTERVIEW = 3 , 'interview'
-        ACCEPTED = 4 , 'accepted'
+    
+    class ApplicationStatus(models.TextChoices):
+        SENT = "sent" , 'Sent'
+        REJECTED = "rejected" , 'Rejected'
+        SEEN = 'seen' , 'Seen'
+        INTERVIEW = 'interview' , 'Interview'
+        ACCEPTED = 'accepted' , 'Accepted'
 
     job_seeker = models.ForeignKey(JobSeeker, on_delete=models.CASCADE , related_name='seeker_applications')
     job_opportunity = models.ForeignKey("employer.JobOpportunity" , on_delete=models.CASCADE , related_name='offer_applications')
     send_at = models.DateTimeField(auto_now_add=True)
-    status = models.IntegerField(choices=ApplicationStatus.choices, default=ApplicationStatus.SENT)
+    status = models.CharField(choices=ApplicationStatus , default=ApplicationStatus.SENT)
     description = models.TextField(null=True , blank=True)
     
  

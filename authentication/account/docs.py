@@ -88,7 +88,7 @@ verify_otp_document = {
             "phone": openapi.Schema(description="phone number", type=openapi.TYPE_STRING, minlength=11),
             "otp": openapi.Schema(description="otp", type=openapi.TYPE_STRING),
         },
-        required=['phone']
+        required=['phone' , 'otp']
     ),
     # "security" : [{"bearer": []}],
     "responses" : {

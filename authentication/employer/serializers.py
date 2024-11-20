@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 # local import
 from employer.models import Employer , JobOpportunity , ViewedResume
-from job_seeker.models import Resume
+from job_seeker.models import Resume , Application
 
 class EmployerSerializer(serializers.ModelSerializer) :
     class Meta :
@@ -26,10 +26,10 @@ class JobOpportunitySerializer(serializers.ModelSerializer) :
             fields = {k : v for k , v in attrs.items() if k != offer_id}
             if not fields :
                 raise ValidationError("at least one field must be entered")
-            if status == "expired" or status == "canceled":
-                attrs['active'] = False
-            else :
-                attrs['active'] = True
+            # if status == "expired" or status == "canceled":
+            #     attrs['active'] = False
+            # else :
+            #     attrs['active'] = True
         return attrs
     
    
@@ -40,6 +40,9 @@ class ViewedResumeSerializer(serializers.ModelSerializer) :
         model = ViewedResume
         exclude = ["employer"]
         
-
-        
-
+class ChangeApllyStatusSerializer(serializers.ModelSerializer) :
+    # id = serializers.PrimaryKeyRelatedField(queryset=Application.objects.all())
+    class Meta :
+        model = Application
+        fields = ["status"]
+    

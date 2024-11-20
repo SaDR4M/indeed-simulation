@@ -22,12 +22,12 @@ class JobOpportunity(models.Model):
         
     class OfferStatus(models.TextChoices) :
         REGISTRED = "registered" , "Registered"
-        CONFIRMED = "confirmed" , "Confirmed"
+        CONFIRMED = "approved" , "Approved"
         CANCELED = "canceled" , "Canceled"
         EXPIRED = "expired" , "Expired"
         
     employer = models.ForeignKey("employer.Employer" , on_delete=models.CASCADE , related_name="job_opportunities")
-    active = models.BooleanField(default=True)
+    active = models.BooleanField(default=False)
     title = models.CharField(max_length=100)
     description = models.TextField(max_length=500)
     status = models.CharField(choices=OfferStatus , default=OfferStatus.REGISTRED)

@@ -1,11 +1,5 @@
 import datetime
 from functools import partial
-import stat
-from tkinter.scrolledtext import example
-from tkinter.tix import INTEGER
-from xmlrpc.client import boolean
-
-from django.shortcuts import render
 
 # third party imports
 from rest_framework.views import APIView
@@ -16,13 +10,16 @@ from account import serializer
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 # local imports
-from .serializers import EmployerSerializer , JobOpportunitySerializer  , ViewedResumeSerializer
+from .serializers import EmployerSerializer , JobOpportunitySerializer  , ViewedResumeSerializer , ChangeApllyStatusSerializer
 from .models import Employer, JobOpportunity, ViewedResume
 from job_seeker.utils import assign_base_permissions
 from . import utils
 from job_seeker.models import Resume , Application
 from job_seeker.serializers import ApplicationSerializer, ResumeSerializer
 from package.models import PurchasedPackage
+from .utils import can_create_offer
+
+
 # Create your views here.
 
 class EmployerRegister(APIView) :
@@ -30,22 +27,23 @@ class EmployerRegister(APIView) :
     operation_summary="get employer infomartion",
     operation_description="get the employer information if the user is employer",
     responses= {
-        200 : EmployerSerializer,
+        200 : EmployerSerializer,   
         400 : "invalid parameters",
         403 : "does not have permission to get this data",
         404 : "did't found the employer"
         
-    }
+    },
+    security=[{"Bearer" : []}]
     )
     def get(self , request):
         user = request.user
-        employer = Employer.objects.filter(user=user)
-        if not employer.exists():
+        employer = utils.employer_exists(user)
+        if not employer :
             return Response(data={"detail" : "there is no employer assign to this user"} , status=HTTP_404_NOT_FOUND)
         # check for the user permission
-        if not user.has_perm('view_employer' , employer[0]) :
+        if not user.has_perm('view_employer' , employer) :
             return Response(data={"detail" : "user does not have permission to view this"} , status=HTTP_403_FORBIDDEN)
-        serializer = EmployerSerializer(employer[0])
+        serializer = EmployerSerializer(employer)
         return Response(data={"detail" : serializer.data} , status=HTTP_200_OK)
 
     @swagger_auto_schema(
@@ -82,13 +80,13 @@ class EmployerRegister(APIView) :
             400 : "invalid parameters",
             404 : "employer was not found",
             403 : "user doesn't have permission to change this data",
-        }
+        },
+        security=[{"Bearer" : []}]
     )
     def patch(self , request) :
         user = request.user
-        try :
-            employer = Employer.objects.get(user=user)
-        except Employer.DoesNotExist:
+        employer = utils.employer_exists(user)
+        if not employer :
             return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
         
         if not user.has_perm('change_employer' , employer) :
@@ -115,20 +113,22 @@ class JobOffer(APIView) :
             400 : "invalid parameters",
             403 :  "user does not have permission to see this data",
             404 :  "employer was not found"
-        }
+        },
+        security=[{"Bearer" : []}]
     )
     def get(self , request):
         user = request.user
         # check for employer exist
-        employer = Employer.objects.filter(user=user)
-        if not employer.exists():
+        employer = utils.employer_exists(user)
+        if not employer :
             return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
         # check for offers to exist
-        job_opportunities = JobOpportunity.objects.filter(employer=employer[0])
-        if not job_opportunities.exists():
+
+        job_opportunities = JobOpportunity.objects.filter(employer=employer)
+        if not job_opportunities.exists() :
             return Response(data={"detail" : "there is no opportunity for this employer"})
-        if not user.has_perm('view_jobopportunity' , job_opportunities[0]) :
-            return Response(data={"detail" : "user does not have permissions for this action"} , status=HTTP_403_FORBIDDEN)
+        # if not user.has_perm('view_jobopportunity' , job_opportunities) :
+        #     return Response(data={"detail" : "user does not have permissions for this action"} , status=HTTP_403_FORBIDDEN)
         serializer = JobOpportunitySerializer(job_opportunities , many=True)
         return Response(data={"detail" : serializer.data } , status=HTTP_400_BAD_REQUEST)
     
@@ -142,32 +142,35 @@ class JobOffer(APIView) :
             400 : "invalid parameters",
             404 : "employer was not found",
             403 : "user doesn't have permission to change this data",
-        }
+        },
+        security=[{"Bearer" : []}]
     )
     def post(self , request) :
         user = request.user
-        package_purchase_id = request.data.get('package_purchase_id')
+        priority = request.data.get('priority')
         
-        if not package_purchase_id :
-            return Response(data={"detail" : "enter the package_purchase_id"})
+        if not priority :
+            return Response(data={"detail" : "enter the priority"})
         
         # check for employer to exist
-        try :
-            employer = Employer.objects.get(user=user)
-        except Employer.DoesNotExist :
+        employer = utils.employer_exists(user)
+        if not employer :
             return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
+        # check the employer package purchased and order it base on the date of purchase
+        purchased_packages = can_create_offer(employer  , priority)
         # check that user can make offer or not
-        if not utils.can_create_offer(employer , int(package_purchase_id)) :
+        if not purchased_packages :
             return Response(data={"detail" : "there is no purchase package for this user" , "success" : False} , status=HTTP_404_NOT_FOUND)
         # check the remaining count of request pacakge
         # *implementing this util is wrong cause if the serialzier is be  invalid (for any reason ) the remaining will be minus but the offer will not save*
-        if not utils.check_package_remaining(employer , int(package_purchase_id)) : 
+        if not utils.check_package_remaining(purchased_packages) :
             return Response(data={"detail" : "there is no remaining for this package"} , status=HTTP_404_NOT_FOUND)
         # save the date
         serializer = JobOpportunitySerializer(data=request.data)
         if serializer.is_valid() :
             offer = serializer.save(employer=employer)
-            
+            purchased_packages.remaining -= 1
+            purchased_packages.save()
             # offer.remaining -= 1
             # offer.save()
             # assign permission to the user for its own object
@@ -188,16 +191,16 @@ class JobOffer(APIView) :
             400 : "invalid parameters",
             404 : "employer was not found",
             403 : "user doesn't have permission to change this data",
-        }
+        },
+        security=[{"Bearer" : []}]
     )
     def patch(self , request) :
         user = request.user
         offer_id = request.data.get('offer_id')
         if not offer_id :
             return Response(data={"detail" : "offer_id must be entered"} , status=HTTP_400_BAD_REQUEST)
-        try :
-            employer = Employer.objects.get(user=user)
-        except Employer.DoesNotExist :
+        employer = utils.employer_exists(user)
+        if not employer :
             return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
         
         try :
@@ -223,16 +226,16 @@ class JobOffer(APIView) :
             400 : "invalid parameters",
             404 : "employer was not found",
             403 : "user doesn't have permission to change this data",
-        }
+        },
+        security=[{"Bearer" : []}]
     )
     def delete(self , request):
         user = request.user
         offer_id = request.data.get('offer_id')
         if not offer_id :
             return Response(data={"detail" : "enter the offer id"} , status=HTTP_400_BAD_REQUEST)
-        try:
-            employer = Employer.objects.get(user=user)
-        except Employer.DoesNotExist :
+        employer = utils.employer_exists(user)
+        if not employer :
             return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
         if not user.has_perm("delete_jobopportunity") :
             return Response(data={"detail" : "employer does not have permission to do this action"} , status=HTTP_403_FORBIDDEN)
@@ -252,14 +255,16 @@ class AllJobOffers(APIView) :
         operation_description="ge all of the job offers that exist active/not active",
         responses={
             200 : "successfull",
-        })
+        },
+        security=[{"Bearer" : []}]
+        )
     def get(self , request):
         job_opportunities = JobOpportunity.objects.all()
         serializer = JobOpportunitySerializer(job_opportunities , many=True)
         return Response(data={"detail" : serializer.data } , status=HTTP_200_OK)
     
     
-# view the resume that job seekers sent to the employer for specific    
+# view the resume that job seekers sent to the employer for specific job opportunity
 class ResumesForOffer(APIView) :
     @swagger_auto_schema(
         operation_summary="view the resume for specific offer",
@@ -277,9 +282,8 @@ class ResumesForOffer(APIView) :
         # check if employer exists
         if not offer_id :
             return Response(data={"detail" : "offer_id must be enter"} , status=HTTP_400_BAD_REQUEST)
-        try :
-            employer = Employer.objects.get(user=user)
-        except Employer.DoesNotExist :
+        employer = utils.employer_exists(user)
+        if not employer :
             return Response(data={"detail" : "Employer does not exists"} , status=HTTP_404_NOT_FOUND)
         # check if the offer is for the employer
         offer = JobOpportunity.objects.filter(employer=employer , pk=offer_id)
@@ -305,13 +309,13 @@ class AllResumes(APIView) :
             200 : ResumeSerializer,
             400 : "invalid parameters",
             404 : "employer/offeer was not found",
-        }
+        },
+        security=[{"Bearer" : []}]
     )
     def get(self , request) : 
         user = request.user
-        try :
-            Employer.objects.get(user=user)
-        except Employer.DoesNotExist :
+        employer = utils.employer_exists(user)
+        if not employer :
             return Response(data={"detail" : "Employer does not exists"} , status=HTTP_404_NOT_FOUND)
         
         resumes = Resume.objects.all()
@@ -333,13 +337,17 @@ class ResumeViewer(APIView) :
             200 : "success",
             400 : "invalid parameters",
             404 : "employer/offeer was not found",
-        }
+        },
+        security=[{"Bearer" : []}]
     )
     def post(self , request) :
         user = request.user
-        try :
-            employer = Employer.objects.get(user=user)
-        except Employer.DoesNotExist :
+        employer = utils.employer_exists(user)
+        offer_id = request.data.get('offer_id')
+        if not offer_id :
+            return Response(data={"detail" : "must enter the offer id"} , status=HTTP_400_BAD_REQUEST)
+
+        if not employer :
             return Response(data={"detail" : "Employer Does not exists"} , status=HTTP_404_NOT_FOUND)
         serializer = ViewedResumeSerializer(data=request.data)
         # save the resume for the employer the see what resume 
@@ -347,23 +355,67 @@ class ResumeViewer(APIView) :
             # avoid duplicate for the resume
             data = serializer.validated_data
             resume = data['resume']
-            
             if ViewedResume.objects.filter(employer=employer , resume=resume).exists() :
                 return Response(data={"detail" : "Resume was seen before"})
-            
-            serializer.save(employer=employer)
+
             # check if user have purchased packages or not
-            purchased = PurchasedPackage.objects.filter(employer=employer , active=True , package__type=1).order_by('bought_at')
+            purchased = PurchasedPackage.objects.filter(employer=employer , active=True , package__type="offer").order_by('bought_at')
             if not purchased.exists() :
                 return Response(data={"detail" : "employer does not have any purchased packages"})
+            # check that the employer have this job offer or not
+            try :
+                offer = JobOpportunity.objects.get(employer=employer, pk=offer_id)
+            except JobOpportunity.DoesNotExist :
+                return Response(data={"detail" : "offer does not exists"} , status=HTTP_404_NOT_FOUND)
+            # check that the resume is in the job application or not
+            try :
+                apply = Application.objects.get(job_opportunity=offer , job_seeker__resumes=resume)
+            except Application.DoesNotExist :
+                return Response(data={"detail" : "apply does not exists"} , status=HTTP_404_NOT_FOUND)
+
+            # change the status of the apply resume to 'seen'
+            apply.status = "seen"
+            apply.save()
+            # save it to the viewed resumes
+            serializer.save(employer=employer)
             # minus from the remaining
             purchased_instance = purchased.first()
             new_remaining = purchased_instance.remaining - 1
             purchased_instance.remaining =new_remaining
             purchased_instance.save()
-            
+
             return Response(data={"success" : True} , status=HTTP_200_OK)
         return Response(data={"success" : False , "errors" : serializer.errors } , status=HTTP_400_BAD_REQUEST)
+
+
+
+# employer change the status of the applies
+class ChangeApplyStatus(APIView) :
+    
+    def patch(self , request) :
+        user = request.user 
+        apply_id = request.data.get('apply_id') 
+        status = request.data.get('status')
+        if not status :
+            return Response(data={"detail" : "status must be enetered"} , status=HTTP_400_BAD_REQUEST)
+        if not apply_id :
+            return Response(data={"detail" : "apply_id must be entered"} , status=HTTP_400_BAD_REQUEST)
+        employer = utils.employer_exists(user)
+        if not employer :
+            return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
+        # check that the offer is for the employer or not 
+        try :
+            apply = Application.objects.get(pk=apply_id , job_opportunity__employer=employer)
+        except Application.DoesNotExist :
+            return Response(data={"detail" : "job apply does not exists"} , status=HTTP_404_NOT_FOUND)   
+        
+        # change the status of the apply
+        serializer = ChangeApllyStatusSerializer(apply , data=request.data , partial=True)
+        if serializer.is_valid() :
+            serializer.save()
+            return Response(data={"success" : True , "data" : serializer.data} , status=HTTP_200_OK)
+        return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
+
 
     
     
@@ -378,14 +430,15 @@ class ChangeJobOfferStatus(APIView) :
             200 : JobOpportunitySerializer,
             400 : "invalid parameters",
             404 : "employer/offeer was not found",
-        }
+        },
+        security=[{"Bearer" : []}]
     )
     def patch(self , request) :
         user = request.user
         offer_id = request.data.get('offer_id')
         status = request.data.get('status')
-        
-        if not user.is_staff :
+        # only admins can change the offer status
+        if not user.is_superuser :
             return Response(data={"detail" : "user does not have permission to do this action"} , status=HTTP_403_FORBIDDEN) 
              
         if not offer_id :
@@ -401,6 +454,11 @@ class ChangeJobOfferStatus(APIView) :
         
         serializer = JobOpportunitySerializer(job_opportunity.first() , data=request.data , partial=True)
         if serializer.is_valid() :
+            data = serializer.validated_data
+            status = data['status']
+            # change the active to true if the offer is approved by the admin
+            if status == "approved" :
+                data['active'] = True
             serializer.save()
             return Response(data={"success" : True , "data" : serializer.data} , status=HTTP_200_OK)
         return Response(data={"success" : False , "errors" : serializer.errors} , status=HTTP_200_OK)

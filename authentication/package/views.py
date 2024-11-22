@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
 from guardian.shortcuts import assign_perm
+from drf_yasg.utils import swagger_auto_schema
 # local imports
 from employer.models import Employer
 from .serializers import PackageSerializer , PurchasePackageSerializer
@@ -17,6 +18,15 @@ from employer.utils import employer_exists
 # admin and employers can create package to view resume
 class CreatePackage(APIView) :
     
+    @swagger_auto_schema(
+        operation_summary="create payment",
+        operation_description="create payment",
+        responses={
+            200 : PackageSerializer,
+            400 : "invalid parameters",
+            404 : "job seeker was not found"
+        }
+    )
     def get(self , request) :
         user = request.user
         if not user.is_superuser :
@@ -27,7 +37,16 @@ class CreatePackage(APIView) :
         serializer = PackageSerializer(packages , many=True)
         return Response(data={"detail" : serializer.data} , status=status.HTTP_200_OK)
 
-        
+    @swagger_auto_schema(
+        operation_summary="create package",
+        operation_description="admins create package",
+        request_body=PackageSerializer,
+        responses={
+            200 : "package created succesfsully",
+            400 : "invalid parameters",
+            404 : "job seeker was not found"
+        }
+    ) 
     def post(self , request) :
         user = request.user
         if not user.is_superuser :
@@ -49,7 +68,17 @@ class CreatePackage(APIView) :
             serializer.save(user=user)
             return Response(data={"detail" : "Package created successfully"} , status=status.HTTP_201_CREATED)
         return Response(data={"errors" : serializer.errors } , status=status.HTTP_400_BAD_REQUEST)
-        
+    
+    
+    @swagger_auto_schema(
+        operation_summary="delete package",
+        operation_description="admins virtual delete the package if there is a package",
+        responses={
+            200 : "package deeleted successfully",
+            400 : "invalid parameters",
+            404 : "job seeker was not found"
+        }
+    )
     def delete(self , request) :
         user = request.user
         package_id = request.data.get('package_id')
@@ -69,7 +98,15 @@ class CreatePackage(APIView) :
            
         
 class PurchasePackage(APIView) :
-    
+    @swagger_auto_schema(
+        operation_summary="list of purchased pacakges",
+        operation_description="show the list of the purchase pacakges if the employer exists and bought at least one pacakge",
+        responses={
+            200 : PurchasePackageSerializer,
+            400 : "invalid parameters",
+            404 : "job seeker was not found"
+        }
+    )
     def get(self , request) :
         user = request.user
         
@@ -86,7 +123,16 @@ class PurchasePackage(APIView) :
     
     
     
-    
+    @swagger_auto_schema(
+        operation_summary="create payment",
+        operation_description="purchase package if the payment is completed",
+        request_body=PurchasePackageSerializer,
+        responses={
+            200 : "purchase was successfull",
+            400 : "invalid parameters",
+            404 : "job seeker was not found"
+        }
+    )
     def post(self , request) :
         user = request.user
         employer = employer_exists(user)
@@ -95,7 +141,6 @@ class PurchasePackage(APIView) :
         serializer = PurchasePackageSerializer(data=request.data , context = {"request" : request})
         if serializer.is_valid() :
             data = serializer.validated_data
-            # data[user] = user
             payment = data['payment']
             package = data['package']
             # not acitve packages can not be bought        

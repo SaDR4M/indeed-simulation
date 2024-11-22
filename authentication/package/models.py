@@ -19,7 +19,7 @@ class Package(models.Model) :
         RESUME = 'resume' , 'Resume'
 
     user = models.ForeignKey(User , on_delete=models.CASCADE , related_name="packages")   
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.DecimalField(max_digits=10, decimal_places=3)
     count = models.IntegerField()
     priority = models.CharField(choices=PackagePriority.choices, default=PackagePriority.NORMAL)
     type = models.CharField(choices=PackageType.choices, null=False)
@@ -33,7 +33,7 @@ class PurchasedPackage(models.Model) :
     package = models.ForeignKey(Package , on_delete=models.CASCADE , related_name="purchases")
     employer = models.ForeignKey(Employer , on_delete=models.CASCADE , related_name="packages")
     payment = models.ForeignKey(Payment , on_delete=models.CASCADE)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.DecimalField(max_digits=10, decimal_places=3)
     remaining = models.IntegerField()
     bought_at = models.DateTimeField(auto_now_add=True)
     active = models.BooleanField(default=True)

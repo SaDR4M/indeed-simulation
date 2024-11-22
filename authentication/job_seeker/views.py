@@ -7,6 +7,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from guardian.shortcuts import assign_perm
 from rest_framework.parsers import MultiPartParser, FormParser
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 # local imports
 from employer.models import JobOpportunity
 from .models import JobSeeker, Resume , Application
@@ -16,6 +18,16 @@ from . import utils
 # Create your views here.
 
 class JobSeekerRegister(APIView) :
+    @swagger_auto_schema(
+        operation_summary="get the current job seeker data",
+        operation_description="get the current job seeker data if the job seeker exists",
+        responses={
+            200 : JobSeekerSerializer,
+            400 : "invalid parameters",
+            403 : "does not have permission to do this action",
+            404 : "job seeker was not found"
+        }
+    )
     def get(self, request):
         user = request.user
         # finding the job seeker information
@@ -27,7 +39,21 @@ class JobSeekerRegister(APIView) :
             return Response(data={"detail" : "user does not have permission to view this"} , status=status.HTTP_403_FORBIDDEN)
         serializer = JobSeekerSerializer(job_seeker)
         return Response(data={"detail" : serializer.data}, status=status.HTTP_200_OK)
-
+    
+    
+    
+    
+    @swagger_auto_schema(
+        operation_summary="register job seeker",
+        operation_description="register the current employer data if the job seeker does not exists",
+        request_body=JobSeekerSerializer,
+        responses={
+            200 : "registered successfully",
+            400 : "invalid parameters",
+            403 : "does not have permission to do this action",
+            404 : "job seeker was not found"
+        }
+    )
     def post(self , request):
         user = request.user
         # return if job seeker exists
@@ -44,6 +70,18 @@ class JobSeekerRegister(APIView) :
             return Response(data={"detail" : "Job Seeker registered successfully"}, status=status.HTTP_201_CREATED)
         return Response(data={"errors" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
+
+    @swagger_auto_schema(
+        operation_summary="update job seeker",
+        operation_description="update the current employer data if the job seeker exists",
+        request_body=JobSeekerSerializer,
+        responses={
+            200 : "updated successfully",
+            400 : "invalid parameters",
+            403 : "does not have permission to do this action",
+            404 : "job seeker was not found"
+        }
+    )
     def patch(self , request ) :
         user = request.user
         job_seeker = utils.job_seeker_exists(user)
@@ -62,7 +100,15 @@ class JobSeekerRegister(APIView) :
 class ResumeRegister(APIView) :
 
     parser_classes = [MultiPartParser] 
-    
+    @swagger_auto_schema(
+        operation_summary="get data resume for the job seeker",
+        operation_description="get data resume for the job seeker if job seeker exists and have permission",
+        responses={
+            200 : ResumeSerializer,
+            400 : "invalid parameters",
+            404 : "job seeker was not found"
+        }
+    )
     def get(self , request):
         user = request.user
         # get the user
@@ -82,6 +128,19 @@ class ResumeRegister(APIView) :
         serializer = ResumeSerializer(resume, many=True)
         return Response(data={"detail" : serializer.data}, status=status.HTTP_200_OK)
     
+    
+    
+    @swagger_auto_schema(
+        operation_summary="register resume for the job seeker",
+        operation_description="register resume for the job seeker if job seeker exists",
+        request_body=ResumeSerializer,
+        responses={
+            200 : "resume registered successfully",
+            400 : "invalid parameters",
+            403 : "does not have permission to do this action",
+            404 : "job seeker was not found"
+        }
+    )
     def post(self , request) :
         user = request.user
         print(request.FILES , request.data)
@@ -104,6 +163,18 @@ class ResumeRegister(APIView) :
             return Response(data={"detail" : "resume created successfully"}, status=status.HTTP_201_CREATED)
         return Response(data={"errors" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
+
+    @swagger_auto_schema(
+        operation_summary="update resume for the job seeker",
+        operation_description="update resume for the job seeker if job seeker exists and have the permission",
+        request_body=ResumeSerializer,
+        responses={
+            200 : "resume updated successfully",
+            400 : "invalid parameters",
+            403 : "does not have permission to do this action",
+            404 : "job seeker was not found"
+        }
+    )
     def patch(self , request):
         user = request.user
         print(request.data)
@@ -122,7 +193,16 @@ class ResumeRegister(APIView) :
             return Response(data={"detail" : "resume updated successfully"} , status=status.HTTP_200_OK)
         return Response(data={"errors" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-
+    @swagger_auto_schema(
+        operation_summary="delete resume for the job seeker",
+        operation_description="delete resume for the job seeker if job seeker exists",
+        responses={
+            200 : "resume deleted successfully",
+            400 : "invalid parameters",
+            403 : "does not have permission to do this action",
+            404 : "job seeker was not found"
+        }
+    )
     def delete(self , request):
         user = request.user
         job_seeker = utils.job_seeker_exists(user)
@@ -139,6 +219,16 @@ class ResumeRegister(APIView) :
 
 class ApplyForJob(APIView):
 
+    @swagger_auto_schema(
+        operation_summary="get data about that job seeker job applies",
+        operation_description="get the data about job applies that job seeker has done if exists and have permission",
+        responses={
+            200 : ApplicationSerializer,
+            400 : "invalid parameters",
+            403 : "does not have permission to do this action",
+            404 : "job seeker was not found"
+        }
+    )
     def get(self, request):
         user = request.user 
         job_seeker = utils.job_seeker_exists(user)
@@ -152,7 +242,17 @@ class ApplyForJob(APIView):
         #     return Response(data={"detail" : "user does not have permission to view this job apply"} , status=status.HTTP_403_FORBIDDEN)
         serializer = ApplicationSerializer(applications, many=True)
         return Response(data={"detail" : serializer.data}, status=status.HTTP_200_OK)
-
+    
+    @swagger_auto_schema(
+        operation_summary="register for job opportunity",
+        operation_description="register for job opportunity if job seeker and the offer exists",
+        request_body=ApplicationSerializer,
+        responses={
+            200 : "job application was successfull",
+            400 : "invalid parameters",
+            404 : "job seeker was not found"
+        }
+    )
     def post(self , request) :
         user = request.user
         # check that user is asign to job seeker
@@ -183,7 +283,17 @@ class ApplyForJob(APIView):
             return Response(data={"detail" : "job application was successfull"} , status=status.HTTP_201_CREATED)
 
         return Response(data={"errors" : serializer.errors} , status=status.HTTP_400_BAD_REQUEST)
-
+    
+    @swagger_auto_schema(
+        operation_summary="delete the job apply",
+        operation_description="delete the job opportunity if job seeker exists and job seeker has applied for any",
+        responses={
+            200 : "job application deleted successfully",
+            400 : "invalid parameters",
+            404 : "job seeker was not found"
+        }
+    )
+    # wrong code
     def delete(self , request):
         user = request.user
         job_seeker = utils.job_seeker_exists(user)
@@ -200,6 +310,16 @@ class ApplyForJob(APIView):
 
 
 class AppliesForJob(APIView):
+        
+    @swagger_auto_schema(
+        operation_summary="get the applies for a specific job offer",
+        operation_description="get all the apply for the job opportunity",
+        responses={
+            200 : ApplicationSerializer,
+            400 : "invalid parameters",
+            404 : "job seeker was not found"
+        }
+    )
     def get(self , request) :
         job_id = request.data.get('id')
         try :

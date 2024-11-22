@@ -5,7 +5,7 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated , AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -33,13 +33,13 @@ from . import docs
 # sign in the user with password
 class SignIn(APIView):
         # permission_classes = [IsAdminUser]
+        permission_classes = [AllowAny]
         @swagger_auto_schema(
                 operation_description=docs.sign_in_document['operation_description'],
                 operation_summary=docs.sign_in_document['operation_summary'],
                 request_body=docs.sign_in_document['request_body'],
                 responses=docs.sign_in_document['responses'],
         )
-
         def post(self , request):
 
             phone = request.data.get("phone")
@@ -131,7 +131,7 @@ class UpdateCredential(APIView) :
 
 # to get the otp 
 class GetOtp(APIView) :
-
+    permission_classes = [AllowAny]
     @swagger_auto_schema(
             operation_summary=docs.get_otp_document['operation_summary'],
             operation_description=docs.get_otp_document['operation_description'],
@@ -155,6 +155,7 @@ class GetOtp(APIView) :
 
 # signin/up the user with otp verification
 class VerifyOtp(APIView) :
+    permission_classes = [AllowAny]
     @swagger_auto_schema(
         operation_description=docs.verify_otp_document['operation_description'],
         operation_summary=docs.verify_otp_document['operation_summary'],

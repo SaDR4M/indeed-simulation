@@ -35,6 +35,21 @@ class JobOpportunity(models.Model):
     # i changed the data type of this column manually in the DB
     expire_at = models.DateField()
 
+# basket package
+class EmployerCart(models.Model) :
+    employer =  models.ForeignKey(Employer , on_delete=models.CASCADE ,  related_name="carts")
+    total_price = models.DecimalField(max_digits=10 , decimal_places=3 , default=0)
+    active = models.BooleanField(default=True)
+    is_paid = models.BooleanField(default=False)
+    
+# basket items
+class EmployerCartItems(models.Model) : 
+    cart = models.ForeignKey(EmployerCart  , on_delete=models.CASCADE , related_name="basket_items")
+    package = models.ForeignKey("package.Package" , on_delete=models.CASCADE)
+    price = models.DecimalField(max_digits=10 , decimal_places=3)
+    quantity = models.IntegerField(default=1)
+    added_at = models.DateTimeField(auto_now_add=True)
+
 
 class ViewedResume (models.Model) :
     resume = models.ForeignKey("job_seeker.Resume" , on_delete=models.CASCADE) 

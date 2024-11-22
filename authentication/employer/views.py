@@ -12,8 +12,15 @@ from drf_yasg.utils import swagger_auto_schema
 
 from package.serializers import PackageSerializer
 # local imports
-from .serializers import EmployerSerializer , JobOpportunitySerializer  , ViewedResumeSerializer , ChangeApllyStatusSerializer
-from .models import Employer, JobOpportunity, ViewedResume
+from .serializers import (EmployerSerializer , 
+                          JobOpportunitySerializer  , 
+                          ViewedResumeSerializer , 
+                          ChangeApllyStatusSerializer ,
+                          CreateCartSerializer,
+                          CreateCartItemSerializer,
+                        )
+                          
+from .models import Employer, JobOpportunity, ViewedResume , EmployerCart , EmployerCartItems
 from job_seeker.utils import assign_base_permissions
 from . import utils
 from job_seeker.models import Resume , Application
@@ -88,6 +95,7 @@ class EmployerRegister(APIView) :
     def patch(self , request) :
         user = request.user
         employer = utils.employer_exists(user)
+        
         if not employer :
             return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
         
@@ -101,7 +109,58 @@ class EmployerRegister(APIView) :
             
         return Response(data={serializer.errors} , status=HTTP_400_BAD_REQUEST) 
 
+# create cart for the employer
+class Cart(APIView) :
+    def get():
+        pass     
+    
+    
+    def post(self , request) :
+        user = request.user
+        employer = utils.employer_exists(user)
+        if not employer :
+            return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
+        employer_cart = EmployerCart.objects.filter(employer = employer , active=True)
+        if employer_cart.exists() :
+            return Response(data={"detail" : "there is active cart for this user"} , status=HTTP_400_BAD_REQUEST)
+        serializer = CreateCartSerializer(data=request.data)
+        if serializer.is_valid() :
+  
+            serializer.save() 
+            return Response(data={"success"  : True } , status=HTTP_201_CREATED)
+        return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
         
+
+        
+
+class Cartitems(APIView) :
+    def get() :
+        pass
+    
+    def post(self , request) :
+        user = request.user
+        employer = utils.employer_exists(user)
+        if not employer :
+            return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
+        try :
+            employer_cart = EmployerCart.objects.get(employer=employer , active=True)
+        except EmployerCart.DoesNotExist :
+            return Response(data={"detail" : "cart does no exists"} ,  status=HTTP_404_NOT_FOUND)
+        
+        serializer = CreateCartItemSerializer(data=request.data)
+        if serializer.is_valid() :
+            serializer.save()
+            serializer.validated_data['user'] = user
+            serializer.validated_data['cart'] = employer_cart
+            return Response(data={"success" : True} , status=HTTP_200_OK)
+        return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)   
+    
+    def patch() :
+        pass
+    
+    def delete() :
+        pass
+# add item to cart
 
     
     

@@ -11,6 +11,9 @@ urlpatterns = [
     path('job-applies/' , views.ResumesForOffer.as_view() , name="resume_applies"),
     path('view-resume/' , views.ResumeViewer.as_view() , name="view_resume"),
     path('change-apply-status/' , views.ChangeApplyStatus.as_view() , name="change_apply_status"),
-
+    path('cart/' , views.Cart.as_view() , name="cart"),
+    path('cart-items/' , views.Cartitems.as_view() , name="cart_items")
 ]
+    
+    
     

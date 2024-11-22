@@ -3,6 +3,7 @@ from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
+from drf_yasg.utils import swagger_auto_schema
 # local imports
 from .serializers import PaymentSerializer
 from employer.models import Employer
@@ -10,6 +11,16 @@ from employer.utils import employer_exists
 # Create your views here.
 
 class CreatePayment(APIView) :
+    @swagger_auto_schema(
+        operation_summary="create payment",
+        operation_description="create payment",
+        request_body=PaymentSerializer,
+        responses={
+            200 : "payment created successfully",
+            400 : "invalid parameters",
+            404 : "job seeker was not found"
+        }
+    )
     def post(self , request) :
         user = request.user
         employer = employer_exists(user)

@@ -12,7 +12,9 @@ urlpatterns = [
     path('view-resume/' , views.ResumeViewer.as_view() , name="view_resume"),
     path('change-apply-status/' , views.ChangeApplyStatus.as_view() , name="change_apply_status"),
     path('cart/' , views.Cart.as_view() , name="cart"),
-    path('cart-items/' , views.Cartitems.as_view() , name="cart_items")
+    path('cart-items/' , views.Cartitems.as_view() , name="cart_items"),
+    path('order/' , views.Order.as_view() , name="order"),
+    path('order-items/' , views.OrderItem.as_view() , name="order_items"),
 ]
     
     

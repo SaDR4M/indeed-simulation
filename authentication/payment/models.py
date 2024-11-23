@@ -13,10 +13,9 @@ class Payment(models.Model):
         FAILED = 'failed' , "Failed"
         REFUNDED = 'refunded' , "Refunded"
     
-    total_price = models.DecimalField(max_digits=10 , decimal_places=2)
-    checkout_at = models.DateTimeField(auto_now_add=True)
     employer = models.ForeignKey(Employer , on_delete=models.CASCADE)
-    #
+    total_price = models.DecimalField(max_digits=10 , decimal_places=3)
+    checkout_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(choices=PaymentStatus , default=PaymentStatus.PENDING)
 
 

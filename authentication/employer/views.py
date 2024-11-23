@@ -1,5 +1,6 @@
 import datetime
-from functools import partial
+from dataclasses import dataclass
+
 
 # third party imports
 from rest_framework.views import APIView
@@ -9,18 +10,18 @@ from guardian.shortcuts import assign_perm
 from account import serializer
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-
+from django.db import transaction
 from package.serializers import PackageSerializer
 # local imports
-from .serializers import (EmployerSerializer , 
-                          JobOpportunitySerializer  , 
-                          ViewedResumeSerializer , 
-                          ChangeApllyStatusSerializer ,
-                          CreateCartSerializer,
-                          CreateCartItemSerializer,
-                        )
+from .serializers import (EmployerSerializer,
+                          JobOpportunitySerializer,
+                          ViewedResumeSerializer,
+                          ChangeApllyStatusSerializer,
+                          CartSerializer,
+                          CartItemSerializer, OrderSerializer, OrderItemSerializer,
+                          )
                           
-from .models import Employer, JobOpportunity, ViewedResume , EmployerCart , EmployerCartItems
+from .models import Employer, JobOpportunity, ViewedResume , EmployerCart , EmployerCartItem , EmployerOrderItem , EmployerOrder
 from job_seeker.utils import assign_base_permissions
 from . import utils
 from job_seeker.models import Resume , Application
@@ -86,7 +87,6 @@ class EmployerRegister(APIView) :
         request_body=EmployerSerializer,
         responses={
             200 : EmployerSerializer,
-            400 : "invalid parameters",
             404 : "employer was not found",
             403 : "user doesn't have permission to change this data",
         },
@@ -111,56 +111,267 @@ class EmployerRegister(APIView) :
 
 # create cart for the employer
 class Cart(APIView) :
-    def get():
-        pass     
-    
-    
-    def post(self , request) :
+    @swagger_auto_schema(
+        operation_summary="get the employer cart",
+        operation_description="get the cart information of the employer and if there is no cart for this user a active cart will be created",
+        responses={
+            200 : CartSerializer,
+            404 : "employer cart was not found",
+            403 : "user doesn't have permission to change this data",
+        },
+        security=[{"Bearer" : []}]
+    )
+    # get the cart data
+    def get(self , request):
+        # add permission to view only their cart
+        user = request.user
+        employer = utils.employer_exists(user)
+        if not employer :
+            return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
+        employer_cart = EmployerCart.objects.filter(employer=employer , active = True)
+        if not employer_cart.exists() :
+            return Response(data={} , status=HTTP_404_NOT_FOUND)
+        serializer = CartSerializer(employer_cart , many=True)
+        return Response(data={"data" : serializer.data} , status=HTTP_200_OK)
+
+
+    @swagger_auto_schema(
+        operation_summary="deactivate the employer cart",
+        operation_description="deactivate the employer cart",
+        responses={
+            200 : "successfully",
+            404 : "employer/active cart was not found",
+            403 : "user doesn't have permission to change this data",
+        },
+        security=[{"Bearer" : []}]
+    )
+    # delete the cart virtually
+    def delete(self , request):
         user = request.user
         employer = utils.employer_exists(user)
         if not employer :
             return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
         employer_cart = EmployerCart.objects.filter(employer = employer , active=True)
-        if employer_cart.exists() :
-            return Response(data={"detail" : "there is active cart for this user"} , status=HTTP_400_BAD_REQUEST)
-        serializer = CreateCartSerializer(data=request.data)
-        if serializer.is_valid() :
-  
-            serializer.save() 
-            return Response(data={"success"  : True } , status=HTTP_201_CREATED)
-        return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
-        
+        if not employer_cart.exists() :
+            return Response(data={"detail" : "there is no active cart for this user"} , status=HTTP_404_NOT_FOUND)
+        employer_cart.update(active = False)
+        return Response(data={"detail" : "cart deleted successfully" , "success" : True} , status=HTTP_200_OK)
 
         
 
 class Cartitems(APIView) :
-    def get() :
-        pass
-    
-    def post(self , request) :
+
+    @swagger_auto_schema(
+        operation_summary="get the employer cart items",
+        operation_description="get the cart items for the active cart of the employer",
+        responses={
+            200: CartItemSerializer,
+            404: "employer/active cart was not found",
+            403: "user doesn't have permission to change this data",
+        },
+        security=[{"Bearer": []}]
+    )
+    def get(self , request) :
         user = request.user
         employer = utils.employer_exists(user)
         if not employer :
             return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
         try :
+            employer_cart = EmployerCart.objects.get(employer = employer , active = True)
+        except EmployerCart.DoesNotExist :
+            # if there was no active cart
+            return Response(data={}, status=HTTP_404_NOT_FOUND)
+        cart_items = employer_cart.cart_items.all()
+        serializer = CartItemSerializer(cart_items , many=True)
+        return Response(data={"data" : serializer.data} , status=HTTP_200_OK)
+
+
+
+    @swagger_auto_schema(
+        operation_summary="add cart items to employer active cart",
+        operation_description="if there is active cart for the employer add the package to it and if not create the cart then add the package",
+        request_body = openapi.Schema(type=openapi.TYPE_OBJECT,properties={"package_id" : openapi.Schema(type=openapi.TYPE_STRING, description="package id")} , required=['package_id']),
+        responses={
+            200: "successfully",
+            400: "invalid parameters",
+            404: "employer/active cart was not found",
+            403: "user doesn't have permission to change this data",
+        },
+        security=[{"Bearer": []}]
+    )
+    def post(self , request) :
+        user = request.user
+        employer = utils.employer_exists(user)
+        package_id = request.data.get('package_id')
+        if not package_id :
+            return Response(data={"detail" : "package id must be entered"} , status=HTTP_400_BAD_REQUEST)
+        if not employer :
+            return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
+        try :
             employer_cart = EmployerCart.objects.get(employer=employer , active=True)
         except EmployerCart.DoesNotExist :
-            return Response(data={"detail" : "cart does no exists"} ,  status=HTTP_404_NOT_FOUND)
-        
-        serializer = CreateCartItemSerializer(data=request.data)
+            # if there was no active cart create the cart
+            serializer = CartSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save(employer=employer)
+            return Response(data={"data": serializer.errors}, status=HTTP_400_BAD_REQUEST)
+
+        try :
+            package = Package.objects.get(pk=package_id , active=True)
+        except Package.DoesNotExist :
+            return Response(data={"detail" : "package does not exist"} , status=HTTP_404_NOT_FOUND)
+
+        serializer = CartItemSerializer(data=request.data)
         if serializer.is_valid() :
-            serializer.save()
-            serializer.validated_data['user'] = user
-            serializer.validated_data['cart'] = employer_cart
+            serializer.save(cart=employer_cart , package=package)
             return Response(data={"success" : True} , status=HTTP_200_OK)
-        return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)   
-    
-    def patch() :
-        pass
-    
-    def delete() :
-        pass
-# add item to cart
+        return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(
+        operation_summary="delete the item from cart",
+        operation_description="delete a specific item from a cart",
+        request_body=openapi.Schema(type=openapi.TYPE_OBJECT, properties={
+            "item_id": openapi.Schema(type=openapi.TYPE_STRING, description="item id")}, required=['package_id']),
+        responses={
+            200: "successfully",
+            400: "invalid parameters",
+            404: "employer/item was not found",
+            403: "user doesn't have permission to change this data",
+        },
+        security=[{"Bearer": []}]
+    )
+    def delete(self , request) :
+        user = request.user
+        employer = utils.employer_exists(user)
+        item_id = request.data.get('item_id')
+        if not item_id :
+            return Response(data={"detail" : "item id must be entered"} , status=HTTP_400_BAD_REQUEST)
+        if not employer :
+            return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
+        try :
+            cart_item = Cartitems.objects.get(pk=item_id , cart__employer=employer)
+        except Cartitems.DoesNotExist :
+            return Response(data={"detail" : "item does not exists"} , status=HTTP_404_NOT_FOUND)
+        cart_item.delete()
+        return Response(data={"success" : True } , status=HTTP_200_OK)
+
+class Order(APIView) :
+    # list of the order by the user
+    @swagger_auto_schema(
+        operation_summary="get orders data of the employer",
+        operation_description="get the list of orders ",
+        responses={
+            200: OrderSerializer,
+            404: "employer/order was not found",
+            403: "user doesn't have permission to change this data",
+        },
+        security=[{"Bearer": []}]
+    )
+    def get(self , request):
+        user = request.user
+        employer = utils.employer_exists(user)
+        if not employer :
+            return Response(data={"detail" : "employer does not exists"} , status = HTTP_404_NOT_FOUND)
+        order = EmployerOrder.objects.filter(employer=employer)
+        if not order.exists() :
+            return Response(data={"detail" : "order does not exists"} , status = HTTP_404_NOT_FOUND)
+        order_data = order.order_by('order_at')
+        serializer = OrderSerializer(order_data , many=True)
+        return Response(data={"data" : serializer.data} , status=HTTP_200_OK)
+
+
+
+    @swagger_auto_schema(
+        operation_summary="create order",
+        operation_description="create order and order items for the items in the active cart and the payment is 'completed' ",
+        request_body = openapi.Schema(type=openapi.TYPE_OBJECT,properties={"package_id" : openapi.Schema(type=openapi.TYPE_STRING, description="package id")} , required=['package_id']),
+        responses={
+            200: "successfully",
+            400: "invalid parameters",
+            404: "employer/cart/cart item was not found",
+            403: "user doesn't have permission to change this data",
+        },
+        security=[{"Bearer": []}]
+    )
+
+    def post(self , request):
+        user = request.user
+        employer = utils.employer_exists(user)
+        if not employer :
+            return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
+        # create order and order item base on the items in the employer cart and if it was successfull the cart status will be False
+        # get the items in the cart
+        try :
+            cart = EmployerCart.objects.get(employer=employer , active=True)
+        except EmployerCart.DoesNotExist :
+            return Response(data={"detail" : "cart is empty"} , status=HTTP_404_NOT_FOUND)
+        # items in the active cart that will be order
+        items = cart.cart_items.all()
+        if not items :
+            return Response(data={"detail" : "cart is empty"} , status=HTTP_404_NOT_FOUND)
+        with transaction.atomic():
+            # create the order
+            order_serializer = OrderSerializer(data=request.data)
+            if not order_serializer.is_valid():
+                return Response({"errors": order_serializer.errors}, status=HTTP_400_BAD_REQUEST)
+            payment = order_serializer.validated_data.get('payment')
+            # if payment is not completed cancel the proccess
+            if payment.status != "completed" :
+                return Response(data={"error" : "payment is not completed"} , status=HTTP_400_BAD_REQUEST)
+            # convert data to a list
+            order_items_data = [
+                {
+                    "package": item.package.id,
+                }
+                for item in items
+            ]
+
+            item_serializer = OrderItemSerializer(data=order_items_data, many=True)
+            if not item_serializer.is_valid():
+                return Response({"errors": item_serializer.errors}, status=HTTP_400_BAD_REQUEST)
+            # deactivate the Cart and saving the data
+            order = order_serializer.save(employer=employer)
+            item_serializer.save(order=order)
+            cart.active = False
+            cart.save()
+        return Response(data={"errors" : "failed"} , status=HTTP_400_BAD_REQUEST)
+
+class OrderItem(APIView) :
+    # list of the order items
+    @swagger_auto_schema(
+        operation_summary="get the data of order items",
+        operation_description="get the data of order items if order/order items exists",
+        responses={
+            200: OrderItemSerializer,
+            400: "invalid parameters",
+            404: "employer/order/order item was not found",
+            403: "user doesn't have permission to change this data",
+        },
+        security=[{"Bearer": []}]
+    )
+    def get(self , request):
+        user = request.user
+        employer = utils.employer_exists(user)
+        order_id = request.data.get('order_id')
+        if not order_id :
+            return Response(data={"detail" : "order_id must be entered"} , status=HTTP_400_BAD_REQUEST)
+        if not employer :
+            return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
+        try :
+            order = EmployerOrder.objects.get(pk=order_id , employer=employer)
+        except EmployerOrder.DoesNotExist :
+            return Response(data={"detail" : "order does not exists"} , status=HTTP_404_NOT_FOUND)
+        order_items = order.order_items.all()
+        if not order_items :
+            return Response(data={"detail" : "there is no item for this order"} , status=HTTP_404_NOT_FOUND)
+        serializer = OrderItemSerializer(order_items , many=True)
+        return Response(data={"data" : serializer.data} , status=HTTP_200_OK)
+
+
+
+
+
+
 
     
     

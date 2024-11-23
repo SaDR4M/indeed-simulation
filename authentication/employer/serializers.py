@@ -4,7 +4,7 @@ from rest_framework.validators import ValidationError
 from rest_framework import serializers
 
 # local import
-from employer.models import Employer , JobOpportunity , ViewedResume , EmployerCartItems , EmployerCart
+from employer.models import Employer, JobOpportunity, ViewedResume, EmployerCartItem, EmployerCart, EmployerOrder, EmployerOrderItem
 from package.models import Package
 from job_seeker.models import Resume , Application
 
@@ -47,12 +47,25 @@ class ChangeApllyStatusSerializer(serializers.ModelSerializer) :
         model = Application
         fields = ["status"]
     
-class CreateCartSerializer(serializers.ModelSerializer) :
+class CartSerializer(serializers.ModelSerializer) :
     class Meta :
         model = EmployerCart
         exclude = ['employer']
-        
-class CreateCartItemSerializer(serializers.ModelSerializer) :
+
+class CartItemSerializer(serializers.ModelSerializer) :
+    # package = serializers.PrimaryKeyRelatedField(queryset=Package.objects.all())
     class Meta :
-        model = EmployerCartItems
+        model = EmployerCartItem
         exclude = ['cart' , 'package']
+
+class OrderSerializer(serializers.ModelSerializer) :
+    class Meta :
+        model = EmployerOrder
+        exclude = ['employer']
+
+class OrderItemSerializer(serializers.ModelSerializer) :
+    package = serializers.PrimaryKeyRelatedField(queryset=Package.objects.all())
+    class Meta:
+        model = EmployerOrderItem
+        exclude = ['order']
+

@@ -37,17 +37,24 @@ class JobOpportunity(models.Model):
 
 # basket package
 class EmployerCart(models.Model) :
-    employer =  models.ForeignKey(Employer , on_delete=models.CASCADE ,  related_name="carts")
-    total_price = models.DecimalField(max_digits=10 , decimal_places=3 , default=0)
+    employer =  models.ForeignKey("employer.Employer" , on_delete=models.CASCADE ,  related_name="carts")
     active = models.BooleanField(default=True)
-    is_paid = models.BooleanField(default=False)
+    added_at = models.DateTimeField(auto_now_add=True)
     
 # basket items
-class EmployerCartItems(models.Model) : 
-    cart = models.ForeignKey(EmployerCart  , on_delete=models.CASCADE , related_name="basket_items")
+class EmployerCartItem(models.Model) :
+    cart = models.ForeignKey(EmployerCart  , on_delete=models.CASCADE , related_name="cart_items")
     package = models.ForeignKey("package.Package" , on_delete=models.CASCADE)
-    price = models.DecimalField(max_digits=10 , decimal_places=3)
-    quantity = models.IntegerField(default=1)
+    added_at = models.DateTimeField(auto_now_add=True)
+
+class EmployerOrder(models.Model) :
+    employer = models.ForeignKey("employer.Employer" , on_delete=models.CASCADE , related_name="orders")
+    payment = models.OneToOneField("payment.Payment" , on_delete=models.CASCADE , related_name="order")
+    order_at = models.DateTimeField(auto_now_add=True)
+
+class EmployerOrderItem(models.Model) :
+    order = models.ForeignKey(EmployerOrder , on_delete=models.CASCADE , related_name="order_items")
+    package = models.ForeignKey("package.Package" , on_delete=models.CASCADE)
     added_at = models.DateTimeField(auto_now_add=True)
 
 

@@ -35,6 +35,11 @@ class CreatePayment(APIView) :
         return Response(data={"detail" : serializer.errors} , status=status.HTTP_400_BAD_REQUEST)
 
 
+
+# class Purchase(APIView) :
+#     def post(self , request):
+
+
 # import requests
 # import json
 #
@@ -100,3 +105,4 @@ class CreatePayment(APIView) :
 #         else:
 #             return {'status': False, 'code': str(response['Status'])}
 #     return response
+

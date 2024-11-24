@@ -1,8 +1,8 @@
-
+import random
 # third party imports
 from datetime import datetime
 # local imports
-from employer.models import Employer
+from employer.models import Employer , EmployerOrder
 from package.models import PurchasedPackage
 
 # can not make job opportunity if they do not have any packages
@@ -42,3 +42,10 @@ def employer_exists(user) :
     except Employer.DoesNotExist :  
         return False
     return employer
+
+def create_random_number() :
+    number = random.randint(300000 , 1000000)
+    payment = EmployerOrder.objects.filter(order_id=number)
+    if payment.exists() :
+        create_random_number()
+    return number

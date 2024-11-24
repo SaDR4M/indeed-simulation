@@ -1,9 +1,12 @@
 import os
-
+import random
 import requests
 from django.conf import settings
 from dotenv import load_dotenv
 load_dotenv(dotenv_path='../.env')
+# local imports
+from .models import Payment
+from employer.models import EmployerCart , EmployerCartItem
 
 CALLBACK_URL = "http://127.0.0.1:8000/account/data"
 DESCRIPTION = 'خرید محصول'
@@ -41,3 +44,20 @@ def verify_payment(authority, amount):
         if data['code'] == 100 or data['code'] == 101:
             return data
     return False
+
+
+def create_random_number() :
+    number = random.randint(300000 , 1000000)
+    payment = Payment.objects.filter(payment_id=number)
+    if payment.exists() :
+        create_random_number()
+    return number
+
+def calc_order_amount(employer) : 
+    total_price = 0
+    cart_items = EmployerCartItem.objects.filter(cart__employer=employer)
+    if not cart_items.exists() :
+        return None
+    for item in cart_items :
+        total_price += item.package.price
+    return total_price

@@ -51,6 +51,7 @@ class EmployerOrder(models.Model) :
     employer = models.ForeignKey("employer.Employer" , on_delete=models.CASCADE , related_name="orders")
     payment = models.OneToOneField("payment.Payment" , on_delete=models.CASCADE , related_name="order")
     order_at = models.DateTimeField(auto_now_add=True)
+    order_id = models.IntegerField()
 
 class EmployerOrderItem(models.Model) :
     order = models.ForeignKey(EmployerOrder , on_delete=models.CASCADE , related_name="order_items")

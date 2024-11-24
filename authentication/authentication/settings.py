@@ -56,7 +56,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',
-    'guardian'
+    'guardian',
+    'celery',
 
 
 ]
@@ -197,6 +198,10 @@ CACHES = {
         }
     }
 }
+# celery setting
+CELERY_BROKER_URL='redis://127.0.0.1:6379',
+CELERY_RESULT_BACKEND='redis://127.0.0.1:6379'
+
 # swagger setting
 SWAGGER_SETTINGS = {
    'SECURITY_DEFINITIONS': {

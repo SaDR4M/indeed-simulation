@@ -61,7 +61,7 @@ class CartItemSerializer(serializers.ModelSerializer) :
 class OrderSerializer(serializers.ModelSerializer) :
     class Meta :
         model = EmployerOrder
-        exclude = ['employer']
+        exclude = ['employer' , 'order_id']
 
 class OrderItemSerializer(serializers.ModelSerializer) :
     package = serializers.PrimaryKeyRelatedField(queryset=Package.objects.all())

@@ -309,6 +309,7 @@ class Order(APIView) :
         items = cart.cart_items.all()
         if not items :
             return Response(data={"detail" : "cart is empty"} , status=HTTP_404_NOT_FOUND)
+        # using transaction atomic to be sure all data will save or nothing
         with transaction.atomic():
             # create the order
             order_serializer = OrderSerializer(data=request.data)
@@ -330,7 +331,8 @@ class Order(APIView) :
             if not item_serializer.is_valid():
                 return Response({"errors": item_serializer.errors}, status=HTTP_400_BAD_REQUEST)
             # deactivate the Cart and saving the data
-            order = order_serializer.save(employer=employer)
+            order_id = utils.create_random_number()
+            order = order_serializer.save(employer=employer , order_id = order_id)
             item_serializer.save(order=order)
             cart.active = False
             cart.save()

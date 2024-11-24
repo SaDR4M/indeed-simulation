@@ -11,6 +11,6 @@ class PaymentSerializer(serializers.ModelSerializer) :
     checkout_at = serializers.DateTimeField(format="%Y-%m-%d , %H:%M:%S" , required=False)
     class Meta : 
         model = Payment
-        exclude = ['employer']
+        exclude = ['employer' , 'authority']
     
         

@@ -14,7 +14,8 @@ class Payment(models.Model):
         REFUNDED = 'refunded' , "Refunded"
     
     employer = models.ForeignKey(Employer , on_delete=models.CASCADE)
-    total_price = models.DecimalField(max_digits=10 , decimal_places=3)
+    authority = models.CharField(max_length=50 , null=True)
+    amount = models.DecimalField(max_digits=10 , decimal_places=3)
     checkout_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(choices=PaymentStatus , default=PaymentStatus.PENDING)
 

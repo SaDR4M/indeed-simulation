@@ -16,7 +16,7 @@ from django.core.validators import ValidationError, validate_email
 
 
 # Local App Imports
-from .models import User
+from .models import User , Message
 from .serializer import UpdateCredential
 from .utils import (
     verify_otp,
@@ -24,8 +24,9 @@ from .utils import (
     create_otp,
     create_tokens,
     can_request_otp,
-    EXPIRE_TIME
+    EXPIRE_TIME,
 )
+from . import tasks
 from . import docs
 
 # Create your views here.
@@ -148,6 +149,17 @@ class GetOtp(APIView) :
         # check that user can request otp or not
         if can_request_otp(phone) :
             otp = create_otp(phone)
+            # create message log
+            message = Message.objects.create(phone=phone , type="otp")
+            print(message.pk)
+            print(Message.objects.get(pk=message.pk))
+            # send the message
+            sms = tasks.send_otp_sms.apply_async(args=[phone , otp , message.pk])
+            # print(sms)
+            # if sms.ready() :
+            #     print(sms.result)
+            # if not sms :
+            #    return Response(data={"error" : "there was problem while sending otp" , "fa_error" : "مشکلی در ارسال کد به وجود امده"} , status=status.HTTP_503_SERVICE_UNAVAILABLE)
             return Response(data={"otp_sent" : True , "otp" : otp} , status=status.HTTP_200_OK)
         return Response(data={"detail" : f"try later"} , status=status.HTTP_400_BAD_REQUEST)
 

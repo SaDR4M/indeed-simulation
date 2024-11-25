@@ -1,17 +1,18 @@
 import os
 import random
 import requests
+import urllib
 from django.conf import settings
 from dotenv import load_dotenv
 load_dotenv(dotenv_path='../.env')
 # local imports
 from .models import Payment
-from employer.models import EmployerCart , EmployerCartItem
+from employer.models import EmployerCartItem
 
 CALLBACK_URL = "http://127.0.0.1:8000/account/data"
 DESCRIPTION = 'خرید محصول'
 MERCHANT_ID = os.getenv('MERCHANT_ID')
-print(MERCHANT_ID)
+
 
 def get_authority(amount) :
     url = 'https://payment.zarinpal.com/pg/v4/payment/request.json'
@@ -61,3 +62,21 @@ def calc_order_amount(employer) :
     for item in cart_items :
         total_price += item.package.price
     return total_price
+
+
+API_KEY = os.getenv('SMS_API_KEY')
+def send_sms(phone , message) :
+    url = f"https://api.kavenegar.com/v1/{API_KEY}/sms/send.json"
+    
+    # encode_message = urllib.parse.quote("این یک پیام تست است")
+    data = {
+        "receptor" : phone,
+        # 'sneder' : "2000500666",
+        "message" : message,
+
+    }
+    response = requests.post(url , data=data)
+    print(response.json())
+# send_sms(09036700953 , "سلام")
+response = requests.get(url=f"https://api.kavenegar.com/v1/{API_KEY}/sms/status.json?messageid=1557328738")
+print(response.json())

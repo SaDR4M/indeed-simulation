@@ -2,10 +2,14 @@
 import random
 from datetime import datetime, timedelta
 
+# os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'authentication.settings')
+
+
+
 # Third-Party Imports
 from django.core.cache import cache
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
-
+import requests
 # Local App Imports
 from .models import User
 
@@ -63,3 +67,4 @@ def user_have_account(phone) :
     if user :
         return True
     return False
+

@@ -57,3 +57,30 @@ class User(AbstractUser) :
         return f'{self.phone} - {self.email}'
 
 
+class Message(models.Model) :
+     
+    phone_validator = RegexValidator(
+        regex=r'^\d{11}$',
+        message="Phone number must be entered in the format: '09121314156'"
+    )
+    
+    class MessageType(models.TextChoices) :
+        OTP = "otp" , "Otp"
+        LOGIN = "login" , "Loign"
+        ORDER = "order" , "Order"
+        
+    class MessageStatus(models.TextChoices) :
+        PENDING = "pending" , "Pending"
+        SENT = "sent" , "Sent"
+        DELIVERED = "delivered" , "Delivered"
+        UNDELIVERED = "undelivered" , "Undelivered"
+        FAILED = "failed" , "Failed"
+        
+        
+    phone = models.CharField(max_length=15, null=False , validators=[phone_validator])
+    send_at = models.DateTimeField(auto_now_add=True)
+    type = models.CharField(choices=MessageType)
+    status = models.CharField(choices=MessageStatus , default=MessageStatus.PENDING)
+    content = models.TextField(null=True , blank=True)
+    message_id = models.CharField(null=False , blank=True)
+        

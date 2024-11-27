@@ -48,8 +48,16 @@ class EmployerCartItem(models.Model) :
     added_at = models.DateTimeField(auto_now_add=True)
 
 class EmployerOrder(models.Model) :
+    
+    class OrderStatus(models.TextChoices) :
+        COMPLETED = "completed"
+        PENDING = "pending"
+        FAILED = "failed"
+        REFUNDED = "refunded"
+        
     employer = models.ForeignKey("employer.Employer" , on_delete=models.CASCADE , related_name="orders")
     payment = models.OneToOneField("payment.Payment" , on_delete=models.CASCADE , related_name="order")
+    status = models.CharField(choices=OrderStatus , default=OrderStatus.PENDING)
     order_at = models.DateTimeField(auto_now_add=True)
     order_id = models.IntegerField()
 

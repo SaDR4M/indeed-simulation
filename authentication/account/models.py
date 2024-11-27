@@ -9,11 +9,14 @@ from pkg_resources import require
 
 class UserManager(BaseUserManager) :
 
-    def create_user(self , phone , password=None):
+    def create_user(self , phone=None , email=None , password=None):
 
-        if not phone :
-            raise ValueError("phone number must be provided")
-        user = self.model(phone=phone)
+        if not phone and not email:
+            raise ValueError("email/phone number must be provided")
+        if phone :
+            user = self.model(phone=phone)
+        if email : 
+            user = self.model(email=email)
         if password :
             user.set_password(password)
         user.save(using=self._db)
@@ -42,7 +45,7 @@ class User(AbstractUser) :
 
     username = None
 
-    phone = models.CharField(max_length=15, unique=True, blank=True, null=False , validators=[phone_validator] , primary_key=True )
+    phone = models.CharField(max_length=15, unique=True, blank=True, null=False , validators=[phone_validator])
     email = models.EmailField(unique=True, blank=True, null=True)
     password = models.CharField(max_length=128, blank=True, null=True)
 
@@ -64,6 +67,10 @@ class Message(models.Model) :
         message="Phone number must be entered in the format: '09121314156'"
     )
     
+    class MessageKind(models.TextChoices) :
+        EMAIL = "email" , "Email"
+        SMS = "sms" , "Sms"
+    
     class MessageType(models.TextChoices) :
         OTP = "otp" , "Otp"
         LOGIN = "login" , "Loign"
@@ -77,10 +84,12 @@ class Message(models.Model) :
         FAILED = "failed" , "Failed"
         
         
-    phone = models.CharField(max_length=15, null=False , validators=[phone_validator])
+    phone = models.CharField(max_length=15, null=True , blank=True , validators=[phone_validator])
+    email = models.CharField(max_length=255 ,null=True , blank=True)
     send_at = models.DateTimeField(auto_now_add=True)
+    kind = models.CharField(choices=MessageKind)
     type = models.CharField(choices=MessageType)
     status = models.CharField(choices=MessageStatus , default=MessageStatus.PENDING)
     content = models.TextField(null=True , blank=True)
-    message_id = models.CharField(null=False , blank=True)
-        
+    message_id = models.CharField(null=True , blank=True)
+    

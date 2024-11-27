@@ -26,7 +26,7 @@ from .utils import (
     can_request_otp,
     EXPIRE_TIME,
 )
-from . import tasks
+from account import tasks
 from . import docs
 
 # Create your views here.
@@ -63,7 +63,7 @@ class SignIn(APIView):
             # create token if the user exist
             if user is not None and user.password is not None:
                 if user.check_password(password):
-                    tokens = create_tokens(phone)
+                    tokens = create_tokens(phone , "phone")
                     return Response(data={"data" : "login successfully" , "tokens" : tokens} , status=status.HTTP_201_CREATED)
                 return Response(data={"detail" : "invalid credentials"} , status=status.HTTP_400_BAD_REQUEST)
 
@@ -141,25 +141,19 @@ class GetOtp(APIView) :
             )
 
     def get(self , request):
-        phone = request.GET.get('phone')
-        # pattern = r"^09\d{9}$"
-        # check for phone
-        if not phone:
-            return Response(data={"detail" : "phone number is not valid"} , status=status.HTTP_400_BAD_REQUEST)
-        # check that user can request otp or not
-        if can_request_otp(phone) :
-            otp = create_otp(phone)
-            # create message log
-            message = Message.objects.create(phone=phone , type="otp")
-            print(message.pk)
-            print(Message.objects.get(pk=message.pk))
-            # send the message
-            sms = tasks.send_otp_sms.apply_async(args=[phone , otp , message.pk])
-            # print(sms)
-            # if sms.ready() :
-            #     print(sms.result)
-            # if not sms :
-            #    return Response(data={"error" : "there was problem while sending otp" , "fa_error" : "مشکلی در ارسال کد به وجود امده"} , status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        type = request.GET.get('type')
+        if not type :
+            return Response(data={"error" : "type must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+        if type not in ["phone" , "email"] :
+            return Response(data={"error" : "type is not valid it must be phone or email"} , status=status.HTTP_400_BAD_REQUEST)
+        contact = request.GET.get('contact')
+        # check for contact
+        if not contact:
+            return Response(data={"detail" : "contact must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+        # send the otp to the user phone
+        otp = create_otp(contact , type)
+        print(otp)
+        if otp :
             return Response(data={"otp_sent" : True , "otp" : otp} , status=status.HTTP_200_OK)
         return Response(data={"detail" : f"try later"} , status=status.HTTP_400_BAD_REQUEST)
 
@@ -175,25 +169,37 @@ class VerifyOtp(APIView) :
         responses=docs.verify_otp_document['responses'],
     )
     def post(self , request):
-        phone = request.data.get('phone')
+        type = request.data.get('type')
+        if not type :
+            return Response(data={"error" : "type must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+        if type not in ["phone" , "email"] :
+            return Response(data={"error" : "type is not valid it must be phone or email"} , status=status.HTTP_400_BAD_REQUEST)
+        contact = request.data.get('contact')
         otp = request.data.get('otp')
 
-        if not phone :
-            return Response(data={"detail" : "phone number is missing"} , status=status.HTTP_400_BAD_REQUEST)
+        if not contact :
+            return Response(data={"detail" : "contact is missing"} , status=status.HTTP_400_BAD_REQUEST)
         if not otp :
             return Response(data={"detail" : "otp is missing"} , status=status.HTTP_400_BAD_REQUEST)
         # verify the otp that user sent
-        verify = verify_otp(phone , otp)
+        verify = verify_otp(contact , otp)
         # check if otp is verified
         if verify == True:
             # creat token for user
-            if user_have_account(phone) :
-                tokens = create_tokens(phone)
+            if user_have_account(contact) :
+                if type == "phone" :
+                    tokens = create_tokens(contact , "phone")
+                if type == "email" : 
+                    tokens = create_tokens(contact , "email")
                 return Response(data={"user_exist" : True , "otp_valid" : True , "tokens" : tokens} , status=status.HTTP_200_OK)
             # create the user and create token
             else :
-                user = User.objects.create_user(phone=phone)
-                tokens = create_tokens(phone)
+                if type == "phone" :
+                    user = User.objects.create_user(phone=contact)
+                    tokens = create_tokens(contact , "phone")
+                if type == "email" : 
+                    user = User.objects.create_user(email=contact)
+                    tokens = create_tokens(contact , "email")
                 return Response(data={"user_exist" : False , "otp_valid" : True , "tokens" : tokens} , status=status.HTTP_200_OK)
         else :
             return Response(data={"detail": f"{verify}"}, status=status.HTTP_400_BAD_REQUEST)

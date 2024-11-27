@@ -6,7 +6,7 @@ from django.conf import settings
 from dotenv import load_dotenv
 load_dotenv(dotenv_path='../.env')
 # local imports
-from .models import Payment
+from payment.models import Payment
 from employer.models import EmployerCartItem
 
 CALLBACK_URL = "http://127.0.0.1:8000/account/data"
@@ -34,17 +34,20 @@ def payment_link(authority) :
         return url
 
 def verify_payment(authority, amount):
-    url = 'https://payment.zarinpal.com/pg/v4/payment/verify.json'
-    response = requests.post(url , {
-        "authority" : authority,
-        "amount" : int(amount),
-        'merchant_id' : MERCHANT_ID,
-    })
-    data = response.json()['data']
-    if data :
-        if data['code'] == 100 or data['code'] == 101:
-            return data
-    return False
+    try :
+        url = 'https://payment.zarinpal.com/pg/v4/payment/verify.json'
+        response = requests.post(url , {
+            "authority" : authority,
+            "amount" : int(amount),
+            'merchant_id' : MERCHANT_ID,
+        })
+        data = response.json()['data']
+        if data :
+            if data['code'] == 100 or data['code'] == 101:
+                return data
+        return False
+    except Exception as e :
+        return False
 
 
 def create_random_number() :
@@ -56,10 +59,11 @@ def create_random_number() :
 
 def calc_order_amount(employer) : 
     total_price = 0
-    cart_items = EmployerCartItem.objects.filter(cart__employer=employer)
+    cart_items = EmployerCartItem.objects.filter(cart__employer=employer , cart__active=True)
     if not cart_items.exists() :
         return None
     for item in cart_items :
+        print(item.package.price)
         total_price += item.package.price
     return total_price
 
@@ -75,8 +79,3 @@ def send_sms(phone , message) :
 
     }
     response = requests.post(url , data=data)
-    print(response.json())
-
-response = requests.get(url=f"https://api.kavenegar.com/v1/{API_KEY}/sms/status.json?messageid=1557328738")
-
-print(response.json())

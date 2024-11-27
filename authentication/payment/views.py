@@ -4,9 +4,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 from drf_yasg.utils import swagger_auto_schema
-
+from django.db import transaction
 from .models import Payment
 from employer.models import EmployerCart
+from celery.result import AsyncResult
 # local imports
 from .serializers import PaymentSerializer
 from employer.models import Employer
@@ -14,7 +15,10 @@ from employer.utils import employer_exists
 from . import utils
 from .utils import verify_payment
 from . import tasks
-
+from employer.models import EmployerCart , EmployerOrder , EmployerCartItem , EmployerOrderItem
+from employer.serializers import OrderSerializer , OrderItemSerializer
+from account.models import Message
+from account.tasks import send_order_sms ,  send_order_email
 # Create your views here.
 
 # class CreatePayment(APIView) :
@@ -55,21 +59,70 @@ class PaymentProcess(APIView) :
         # save the payment
         serializer = PaymentSerializer(data=request.data)
         if serializer.is_valid() :
-            # get the total amount of basket 
-            amount = utils.calc_order_amount(employer)
-            if amount is None :
-                return Response(data={"success" : False , "error" : "cart is empty" , "fa_error" : "سبد خرید خالی است"} , status=status.HTTP_400_BAD_REQUEST)
-            print(amount) 
-            # create the authority
-            authority = utils.get_authority(amount)
-            if authority is None:
-                return Response(data={"error" : "process failed" , "fa_error" : "مشکلی در پرداخت به وجود آمده"} , status=status.HTTP_400_BAD_REQUEST)
-            # create the payment url
-            url = utils.payment_link(authority)
-            payment_id = utils.create_random_number()
-            payment = serializer.save(employer=employer , amount=amount , authority=authority , payment_id=payment_id)
-            # cancel the payment if after 15 mintues payment was not successful
-            tasks.fail_payment_if_unpaid.apply_async(args=[payment.pk], countdown=15 * 60)
+            # using transaction atomic to be sure all data will save or nothing
+            with transaction.atomic():
+                # get the total amount of basket 
+                amount = utils.calc_order_amount(employer)
+                if amount is None :
+                    return Response(data={"success" : False , "error" : "cart is empty" , "fa_error" : "سبد خرید خالی است"} , status=status.HTTP_400_BAD_REQUEST)
+                print(amount) 
+                # create the authority
+                authority = utils.get_authority(amount)
+                if authority is None:
+                    return Response(data={"error" : "process failed" , "fa_error" : "مشکلی در پرداخت به وجود آمده"} , status=status.HTTP_400_BAD_REQUEST)
+                # create the payment url
+                url = utils.payment_link(authority)
+                payment_id = utils.create_random_number()
+                payment = serializer.save(employer=employer , amount=amount , authority=authority , payment_id=payment_id)
+    
+                # create order and order item base on the items in the employer cart and if it was successfull the cart status will be False
+                # get the items in the cart
+                try :
+                    cart = EmployerCart.objects.get(employer=employer , active=True)
+                except EmployerCart.DoesNotExist :
+                    return Response(data={"detail" : "cart is empty"} , status=status.HTTP_404_NOT_FOUND)
+                # items in the active cart that will be order
+                items = cart.cart_items.all()
+                if not items :
+                    return Response(data={"detail" : "cart is empty"} , status=status.HTTP_404_NOT_FOUND)
+ 
+                # create the order
+                order_serializer = OrderSerializer(data=request.data)
+                if not order_serializer.is_valid():
+                    return Response({"errors": order_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                # payment = order_serializer.validated_data.get('payment')
+                # # check payment is for the employer
+                # if payment.employer != employer :
+                #     return Response(data={"error" : "payment does not belong to this employer"} , status=HTTP_400_BAD_REQUEST)
+                # # if payment is not completed cancel the proccess
+                # if payment.status != "completed" :
+                #     return Response(data={"error" : "payment is not completed"} , status=HTTP_400_BAD_REQUEST)
+                # convert data to a list
+                order_items_data = [
+                    {
+                        "package": item.package.id,
+                    }
+                    for item in items
+                ]
+
+                item_serializer = OrderItemSerializer(data=order_items_data, many=True)
+                if not item_serializer.is_valid():
+                    return Response({"errors": item_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                # deactivate the Cart and saving the data
+                order_id = utils.create_random_number()
+                order = order_serializer.save(employer=employer , order_id = order_id , payment=payment)
+                item_serializer.save(order=order)
+                cart.active = False
+                cart.save()
+                
+
+                    
+                # return Response(data={"errors" : "failed"} , status=status.HTTP_400_BAD_REQUEST)
+
+                # cancel the payment if after 15 mintues payment was not successful
+                # wait to transcation be done then check the        
+                payment_task = transaction.on_commit(lambda: tasks.fail_payment_if_unpaid.apply_async(args=[payment.pk]))
+                # result = AsyncResult()
             return Response(data={"success": True , "payment_url" : url}, status=status.HTTP_200_OK)
         return Response(data={"success" : False , "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
     
@@ -92,7 +145,7 @@ class PaymentProcess(APIView) :
             user_pending_payment.save()
             return Response(data={"error" : "payment failed" , "fa_error" : "پرداخت ناموفق "}, status=status.HTTP_400_BAD_REQUEST)
             # if it was successful
-        user_pending_payment.first().status = "completed"
-        user_pending_payment.first().save()
+        user_pending_payment.status = "completed"
+        user_pending_payment.save()
         return Response(data={"success" : True , "fa_data" : "پرداخت موفق"})
 

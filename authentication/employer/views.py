@@ -28,8 +28,9 @@ from job_seeker.models import Resume , Application
 from job_seeker.serializers import ApplicationSerializer, ResumeSerializer
 from package.models import PurchasedPackage, Package
 from .utils import can_create_offer, employer_exists
+from celery.result import AsyncResult
 # sms
-from account.tasks import send_order_sms
+from account.tasks import send_order_sms , send_order_email
 from account.models import Message
 
 # Create your views here.
@@ -132,7 +133,7 @@ class Cart(APIView) :
             return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
         employer_cart = EmployerCart.objects.filter(employer=employer , active = True)
         if not employer_cart.exists() :
-            return Response(data={} , status=HTTP_404_NOT_FOUND)
+            return Response(data={"data" : {}} , status=HTTP_404_NOT_FOUND)
         serializer = CartSerializer(employer_cart , many=True)
         return Response(data={"data" : serializer.data} , status=HTTP_200_OK)
 
@@ -182,10 +183,15 @@ class Cartitems(APIView) :
             employer_cart = EmployerCart.objects.get(employer = employer , active = True)
         except EmployerCart.DoesNotExist :
             # if there was no active cart
-            return Response(data={}, status=HTTP_404_NOT_FOUND)
+            return Response(data={"data" : {}}, status=HTTP_404_NOT_FOUND)
+        data = []
         cart_items = employer_cart.cart_items.all()
-        serializer = CartItemSerializer(cart_items , many=True)
-        return Response(data={"data" : serializer.data} , status=HTTP_200_OK)
+        for item in cart_items :
+            cart_serializer = CartItemSerializer(item).data
+            packages_serialzier = PackageSerializer(item.package).data
+            cart_serializer['package'] = packages_serialzier
+            data.append(cart_serializer)
+        return Response(data={"data" : data} , status=HTTP_200_OK)
 
 
 
@@ -209,9 +215,9 @@ class Cartitems(APIView) :
             return Response(data={"detail" : "package id must be entered"} , status=HTTP_400_BAD_REQUEST)
         if not employer :
             return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
-        try :
-            employer_cart = EmployerCart.objects.get(employer=employer , active=True)
-        except EmployerCart.DoesNotExist :
+ 
+        employer_cart = EmployerCart.objects.filter(employer=employer , active=True)
+        if not employer_cart.exists() :
             # if there was no active cart create the cart
             serializer = CartSerializer(data=request.data)
             if serializer.is_valid():
@@ -225,9 +231,10 @@ class Cartitems(APIView) :
 
         serializer = CartItemSerializer(data=request.data)
         if serializer.is_valid() :
-            serializer.save(cart=employer_cart , package=package)
+            serializer.save(cart=employer_cart.first() , package=package)
             return Response(data={"success" : True} , status=HTTP_200_OK)
         return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
+
 
     @swagger_auto_schema(
         operation_summary="delete the item from cart",
@@ -251,8 +258,8 @@ class Cartitems(APIView) :
         if not employer :
             return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
         try :
-            cart_item = Cartitems.objects.get(pk=item_id , cart__employer=employer)
-        except Cartitems.DoesNotExist :
+            cart_item = EmployerCartItem.objects.get(pk=item_id , cart__employer=employer)
+        except EmployerCartItem.DoesNotExist :
             return Response(data={"detail" : "item does not exists"} , status=HTTP_404_NOT_FOUND)
         cart_item.delete()
         return Response(data={"success" : True } , status=HTTP_200_OK)
@@ -277,9 +284,19 @@ class Order(APIView) :
         order = EmployerOrder.objects.filter(employer=employer)
         if not order.exists() :
             return Response(data={"detail" : "order does not exists"} , status = HTTP_404_NOT_FOUND)
+        # show order , order items then the package of the order item
+        data = []
         order_data = order.order_by('order_at')
-        serializer = OrderSerializer(order_data , many=True)
-        return Response(data={"data" : serializer.data} , status=HTTP_200_OK)
+        for order in order_data :
+            items = []
+            order_items = order.order_items.all() 
+            order = OrderSerializer(order).data
+            order_item_serializer = OrderSerializer(order_items , many=True).data
+            for item in order_items :
+                order_item_serializer['package'] = item.package
+            order['items'] = order_item_serializer
+            data.append(order)
+        return Response(data={"data" : data} , status=HTTP_200_OK)
 
 
 
@@ -297,52 +314,62 @@ class Order(APIView) :
     )
 
     def post(self , request):
-        user = request.user
-        employer = utils.employer_exists(user)
-        if not employer :
-            return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
-        # create order and order item base on the items in the employer cart and if it was successfull the cart status will be False
-        # get the items in the cart
-        try :
-            cart = EmployerCart.objects.get(employer=employer , active=True)
-        except EmployerCart.DoesNotExist :
-            return Response(data={"detail" : "cart is empty"} , status=HTTP_404_NOT_FOUND)
-        # items in the active cart that will be order
-        items = cart.cart_items.all()
-        if not items :
-            return Response(data={"detail" : "cart is empty"} , status=HTTP_404_NOT_FOUND)
-        # using transaction atomic to be sure all data will save or nothing
-        with transaction.atomic():
-            # create the order
-            order_serializer = OrderSerializer(data=request.data)
-            if not order_serializer.is_valid():
-                return Response({"errors": order_serializer.errors}, status=HTTP_400_BAD_REQUEST)
-            payment = order_serializer.validated_data.get('payment')
-            # if payment is not completed cancel the proccess
-            if payment.status != "completed" :
-                return Response(data={"error" : "payment is not completed"} , status=HTTP_400_BAD_REQUEST)
-            # convert data to a list
-            order_items_data = [
-                {
-                    "package": item.package.id,
-                }
-                for item in items
-            ]
+        pass
+        # user = request.user
+        # employer = utils.employer_exists(user)
+        # if not employer :
+        #     return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
+        # # create order and order item base on the items in the employer cart and if it was successfull the cart status will be False
+        # # get the items in the cart
+        # try :
+        #     cart = EmployerCart.objects.get(employer=employer , active=True)
+        # except EmployerCart.DoesNotExist :
+        #     return Response(data={"detail" : "cart is empty"} , status=HTTP_404_NOT_FOUND)
+        # # items in the active cart that will be order
+        # items = cart.cart_items.all()
+        # if not items :
+        #     return Response(data={"detail" : "cart is empty"} , status=HTTP_404_NOT_FOUND)
+        # # using transaction atomic to be sure all data will save or nothing
+        # with transaction.atomic():
+        #     # create the order
+        #     order_serializer = OrderSerializer(data=request.data)
+        #     if not order_serializer.is_valid():
+        #         return Response({"errors": order_serializer.errors}, status=HTTP_400_BAD_REQUEST)
+        #     payment = order_serializer.validated_data.get('payment')
+        #     # check payment is for the employer
+        #     if payment.employer != employer :
+        #         return Response(data={"error" : "payment does not belong to this employer"} , status=HTTP_400_BAD_REQUEST)
+        #     # if payment is not completed cancel the proccess
+        #     if payment.status != "completed" :
+        #         return Response(data={"error" : "payment is not completed"} , status=HTTP_400_BAD_REQUEST)
+        #     # convert data to a list
+        #     order_items_data = [
+        #         {
+        #             "package": item.package.id,
+        #         }
+        #         for item in items
+        #     ]
 
-            item_serializer = OrderItemSerializer(data=order_items_data, many=True)
-            if not item_serializer.is_valid():
-                return Response({"errors": item_serializer.errors}, status=HTTP_400_BAD_REQUEST)
-            # deactivate the Cart and saving the data
-            order_id = utils.create_random_number()
-            order = order_serializer.save(employer=employer , order_id = order_id)
-            item_serializer.save(order=order)
-            cart.active = False
-            cart.save()
-            # send sms for the order
-            message = Message.objects.create(phone=user.phone ,type="order")
-            print(user.phone , order_id , message.pk)
-            send_order_sms.apply_async(args=[user.phone , order_id , message.pk])
-        return Response(data={"errors" : "failed"} , status=HTTP_400_BAD_REQUEST)
+        #     item_serializer = OrderItemSerializer(data=order_items_data, many=True)
+        #     if not item_serializer.is_valid():
+        #         return Response({"errors": item_serializer.errors}, status=HTTP_400_BAD_REQUEST)
+        #     # deactivate the Cart and saving the data
+        #     order_id = utils.create_random_number()
+        #     order = order_serializer.save(employer=employer , order_id = order_id)
+        #     item_serializer.save(order=order)
+        #     cart.active = False
+        #     cart.save()
+            
+        #     if user.phone :
+        #          # send sms for the order
+        #         message = Message.objects.create(phone=user.phone ,type="order" , kind="sms")
+        #         send_order_sms.apply_async(args=[user.phone , order_id , message.pk])
+        #     if user.email : 
+        #         # send email for the order 
+        #         message = Message.objects.create(email=user.email ,type="order" , kind="email")
+        #         send_order_email.apply_async(args=[user.email , order_id , message.pk])
+                
+        # return Response(data={"errors" : "failed"} , status=HTTP_400_BAD_REQUEST)
 
 class OrderItem(APIView) :
     # list of the order items
@@ -374,11 +401,6 @@ class OrderItem(APIView) :
             return Response(data={"detail" : "there is no item for this order"} , status=HTTP_404_NOT_FOUND)
         serializer = OrderItemSerializer(order_items , many=True)
         return Response(data={"data" : serializer.data} , status=HTTP_200_OK)
-
-
-
-
-
 
 
     

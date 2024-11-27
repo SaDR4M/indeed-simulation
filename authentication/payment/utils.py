@@ -71,12 +71,12 @@ def send_sms(phone , message) :
     # encode_message = urllib.parse.quote("این یک پیام تست است")
     data = {
         "receptor" : phone,
-        # 'sneder' : "2000500666",
         "message" : message,
 
     }
     response = requests.post(url , data=data)
     print(response.json())
-# send_sms(09036700953 , "سلام")
+
 response = requests.get(url=f"https://api.kavenegar.com/v1/{API_KEY}/sms/status.json?messageid=1557328738")
+
 print(response.json())

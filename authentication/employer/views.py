@@ -28,7 +28,9 @@ from job_seeker.models import Resume , Application
 from job_seeker.serializers import ApplicationSerializer, ResumeSerializer
 from package.models import PurchasedPackage, Package
 from .utils import can_create_offer, employer_exists
-
+# sms
+from account.tasks import send_order_sms
+from account.models import Message
 
 # Create your views here.
 
@@ -336,6 +338,10 @@ class Order(APIView) :
             item_serializer.save(order=order)
             cart.active = False
             cart.save()
+            # send sms for the order
+            message = Message.objects.create(phone=user.phone ,type="order")
+            print(user.phone , order_id , message.pk)
+            send_order_sms.apply_async(args=[user.phone , order_id , message.pk])
         return Response(data={"errors" : "failed"} , status=HTTP_400_BAD_REQUEST)
 
 class OrderItem(APIView) :

@@ -134,6 +134,9 @@ class Cart(APIView) :
         employer_cart = EmployerCart.objects.filter(employer=employer , active = True)
         if not employer_cart.exists() :
             return Response(data={"data" : {}} , status=HTTP_404_NOT_FOUND)
+        # check permission of the user
+        if not user.has_perm("view_employecart" , employer_cart.first()) :
+            return Response(status=HTTP_403_FORBIDDEN)
         serializer = CartSerializer(employer_cart , many=True)
         return Response(data={"data" : serializer.data} , status=HTTP_200_OK)
 
@@ -157,6 +160,9 @@ class Cart(APIView) :
         employer_cart = EmployerCart.objects.filter(employer = employer , active=True)
         if not employer_cart.exists() :
             return Response(data={"detail" : "there is no active cart for this user"} , status=HTTP_404_NOT_FOUND)
+        # check permission of the user
+        if not user.has_perm("delete_emoloyercart" , employer_cart.first()) :
+            return Response(status=HTTP_403_FORBIDDEN)
         employer_cart.update(active = False)
         return Response(data={"detail" : "cart deleted successfully" , "success" : True} , status=HTTP_200_OK)
 
@@ -179,11 +185,17 @@ class Cartitems(APIView) :
         employer = utils.employer_exists(user)
         if not employer :
             return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
+
         try :
             employer_cart = EmployerCart.objects.get(employer = employer , active = True)
         except EmployerCart.DoesNotExist :
             # if there was no active cart
             return Response(data={"data" : {}}, status=HTTP_404_NOT_FOUND)
+        
+        # check user permission
+        if not user.has_perm("view_emoloyercartitems" , employer_cart) :
+            return Response(status=HTTP_403_FORBIDDEN)
+
         data = []
         cart_items = employer_cart.cart_items.all()
         for item in cart_items :
@@ -221,8 +233,12 @@ class Cartitems(APIView) :
             # if there was no active cart create the cart
             serializer = CartSerializer(data=request.data)
             if serializer.is_valid():
-                serializer.save(employer=employer)
-            return Response(data={"data": serializer.errors}, status=HTTP_400_BAD_REQUEST)
+                cart = serializer.save(employer=employer)
+                assign_perm("view_employercart" , user , cart )
+                assign_perm("change_employercart" , user , cart)
+                assign_perm("delete_employercart" , user , cart)
+            else :
+                return Response(data={"data": serializer.errors}, status=HTTP_400_BAD_REQUEST)
 
         try :
             package = Package.objects.get(pk=package_id , active=True)
@@ -230,8 +246,12 @@ class Cartitems(APIView) :
             return Response(data={"detail" : "package does not exist"} , status=HTTP_404_NOT_FOUND)
 
         serializer = CartItemSerializer(data=request.data)
+
         if serializer.is_valid() :
-            serializer.save(cart=employer_cart.first() , package=package)
+            cart_item = serializer.save(cart=employer_cart.first() , package=package)
+            assign_perm("view_employercartitem" , user , cart_item)
+            assign_perm("change_employercartitem" , user , cart_item)
+            assign_perm("delete_employercartitem" , user , cart_item)
             return Response(data={"success" : True} , status=HTTP_200_OK)
         return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
 
@@ -257,10 +277,14 @@ class Cartitems(APIView) :
             return Response(data={"detail" : "item id must be entered"} , status=HTTP_400_BAD_REQUEST)
         if not employer :
             return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
+
         try :
             cart_item = EmployerCartItem.objects.get(pk=item_id , cart__employer=employer)
         except EmployerCartItem.DoesNotExist :
             return Response(data={"detail" : "item does not exists"} , status=HTTP_404_NOT_FOUND)
+        # check user permission
+        if not user.has_perm("delete_employercartitems" , cart_item) :
+            return Response(status=HTTP_403_FORBIDDEN)
         cart_item.delete()
         return Response(data={"success" : True } , status=HTTP_200_OK)
 
@@ -285,15 +309,16 @@ class Order(APIView) :
         if not order.exists() :
             return Response(data={"detail" : "order does not exists"} , status = HTTP_404_NOT_FOUND)
         # show order , order items then the package of the order item
+        # adding the data i want to show in the nested serializers
         data = []
         order_data = order.order_by('order_at')
         for order in order_data :
-            items = []
             order_items = order.order_items.all() 
             order = OrderSerializer(order).data
-            order_item_serializer = OrderSerializer(order_items , many=True).data
             for item in order_items :
-                order_item_serializer['package'] = item.package
+                order_item_serializer = OrderSerializer(item).data
+                package_serializer = PackageSerializer(item.package).data
+                order_item_serializer['package'] = package_serializer
             order['items'] = order_item_serializer
             data.append(order)
         return Response(data={"data" : data} , status=HTTP_200_OK)

@@ -60,10 +60,8 @@ class CreatePackage(APIView) :
                 priority = "normal"
             else :
                 priority = serializer.validated_data['priority']
-
             package = Package.objects.filter(type=type, priority=priority, count=count, active=True).count()
-
-            if package > 1:
+            if package >= 1:
                 return Response(data={"detail" : "with this count you can only have on active package , deactive the other packages to register this package"} , status=status.HTTP_400_BAD_REQUEST)
             serializer.save(user=user)
             return Response(data={"detail" : "Package created successfully"} , status=status.HTTP_201_CREATED)
@@ -85,7 +83,7 @@ class CreatePackage(APIView) :
         if not package_id :
             return Response(data={"detail" : "package_id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
         
-        if not user.is_staff :
+        if not user.is_superuser :
             return Response(data={"detail" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
         package = Package.objects.filter(pk=int(package_id))
         

@@ -19,6 +19,8 @@ class Payment(models.Model):
     checkout_at = models.DateTimeField(auto_now_add=True)
     payment_id = models.IntegerField()
     status = models.CharField(choices=PaymentStatus , default=PaymentStatus.PENDING)
+    
+
 
 
 

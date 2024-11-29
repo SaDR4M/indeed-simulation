@@ -63,8 +63,10 @@ def calc_order_amount(employer) :
     if not cart_items.exists() :
         return None
     for item in cart_items :
-        print(item.package.price)
         total_price += item.package.price
+    # price of the urgent offers
+    # if item.package.type == "offer" and item.package.priority == "urgent" :
+    #     total_price = total_price * 1.6
     return total_price
 
 

@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'guardian',
     'celery',
+    'django_elasticsearch_dsl',
 
 
 ]
@@ -214,11 +215,20 @@ SWAGGER_SETTINGS = {
    "DEFAULT_MODEL_RENDERING": "example"
 }
 
+# elastic search setting
+# change the password and set it in the .env
+ELASTICSEARCH_DSL={
+    'default': {
+        'hosts': 'http://127.0.0.1:9200/',
+        'http_auth': ('elastic', '13832004')
+    }
+}
 # CORS setting
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ORIGIN_WHITELIST = ()
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
+
 
 LANGUAGE_CODE = 'en-us'
 

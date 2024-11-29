@@ -19,31 +19,9 @@ from employer.models import EmployerCart , EmployerOrder , EmployerCartItem , Em
 from employer.serializers import OrderSerializer , OrderItemSerializer
 from account.models import Message
 from account.tasks import send_order_sms ,  send_order_email
+from guardian.shortcuts import assign_perm
 # Create your views here.
 
-# class CreatePayment(APIView) :
-#     @swagger_auto_schema(
-#         operation_summary="create payment",
-#         operation_description="create payment",
-#         request_body=PaymentSerializer,
-#         responses={
-#             200 : "payment created successfully",
-#             400 : "invalid parameters",
-#             404 : "job seeker was not found"
-#         }
-#     )
-    # def post(self , request) :
-    #     user = request.user
-    #     employer = employer_exists(user)
-    #     if not employer :
-    #         return Response(data={"detail" : "employer does not exists"} , status=status.HTTP_400_BAD_REQUEST)
-    #     serializer = PaymentSerializer(data=request.data)
-    #     if serializer.is_valid() :
-    #         data = serializer.validated_data
-    #         data['employer'] = employer
-    #         serializer.save()
-    #         return Response(data={"success" : True} , status=status.HTTP_200_OK)
-    #     return Response(data={"detail" : serializer.errors} , status=status.HTTP_400_BAD_REQUEST)
 
 
 class PaymentProcess(APIView) :
@@ -74,6 +52,7 @@ class PaymentProcess(APIView) :
                 url = utils.payment_link(authority)
                 payment_id = utils.create_random_number()
                 payment = serializer.save(employer=employer , amount=amount , authority=authority , payment_id=payment_id)
+                assign_perm("view_payment" , user , payment)
     
                 # create order and order item base on the items in the employer cart and if it was successfull the cart status will be False
                 # get the items in the cart
@@ -90,13 +69,7 @@ class PaymentProcess(APIView) :
                 order_serializer = OrderSerializer(data=request.data)
                 if not order_serializer.is_valid():
                     return Response({"errors": order_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-                # payment = order_serializer.validated_data.get('payment')
-                # # check payment is for the employer
-                # if payment.employer != employer :
-                #     return Response(data={"error" : "payment does not belong to this employer"} , status=HTTP_400_BAD_REQUEST)
-                # # if payment is not completed cancel the proccess
-                # if payment.status != "completed" :
-                #     return Response(data={"error" : "payment is not completed"} , status=HTTP_400_BAD_REQUEST)
+                
                 # convert data to a list
                 order_items_data = [
                     {
@@ -111,14 +84,11 @@ class PaymentProcess(APIView) :
                 # deactivate the Cart and saving the data
                 order_id = utils.create_random_number()
                 order = order_serializer.save(employer=employer , order_id = order_id , payment=payment)
+                assign_perm("view_order" , user , order)
                 item_serializer.save(order=order)
                 cart.active = False
                 cart.save()
                 
-
-                    
-                # return Response(data={"errors" : "failed"} , status=status.HTTP_400_BAD_REQUEST)
-
                 # cancel the payment if after 15 mintues payment was not successful
                 # wait to transcation be done then check the        
                 payment_task = transaction.on_commit(lambda: tasks.fail_payment_if_unpaid.apply_async(args=[payment.pk]))

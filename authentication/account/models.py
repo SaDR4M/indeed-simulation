@@ -79,6 +79,7 @@ class Message(models.Model) :
         LOGIN = "login" , "Loign"
         ORDER = "order" , "Order"
         RESUME = "resume" , "Resume"
+        EXPIRE = "expire" , "Expire"
         
     class MessageStatus(models.TextChoices) :
         PENDING = "pending" , "Pending"

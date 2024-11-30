@@ -33,7 +33,7 @@ class JobOpportunity(models.Model):
     status = models.CharField(choices=OfferStatus , default=OfferStatus.REGISTRED)
     created_at = models.DateTimeField(auto_now_add=True)
     # i changed the data type of this column manually in the DB
-    expire_at = models.DateField()
+    expire_at = models.DateTimeField()
 
 # basket package
 class EmployerCart(models.Model) :
@@ -72,6 +72,19 @@ class ViewedResume (models.Model) :
     employer = models.ForeignKey("employer.Employer" , on_delete=models.CASCADE)
     
 
+
+class InterviewSchedule(models.Model) :
+    class InterViewStatus(models.TextChoices) :
+        PENDING = "pending"
+        APPROVED = "approved"
+        REJECTED = "rejected"
+        CONFLICT = "conflict"
+    apply = models.ForeignKey("job_seeker.Application" , on_delete=models.CASCADE , related_name="schedules")
+    job_seeker_time = models.DateTimeField(null=True , blank=True)
+    employer_time = models.DateTimeField(null=True , blank=True)
+    interview_time= models.DateTimeField(null=True , blank=True)
+    status = models.CharField(choices=InterViewStatus , default=InterViewStatus.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
     

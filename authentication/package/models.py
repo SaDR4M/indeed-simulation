@@ -33,7 +33,6 @@ class PurchasedPackage(models.Model) :
     package = models.ForeignKey(Package , on_delete=models.CASCADE , related_name="purchases")
     employer = models.ForeignKey(Employer , on_delete=models.CASCADE , related_name="packages")
     payment = models.ForeignKey(Payment , on_delete=models.CASCADE)
-    price = models.DecimalField(max_digits=10, decimal_places=3)
     remaining = models.IntegerField()
     bought_at = models.DateTimeField(auto_now_add=True)
     active = models.BooleanField(default=True)
@@ -43,10 +42,10 @@ class PurchasedPackage(models.Model) :
     def save(self , *args , **kwargs) :
         if self.pk is None :
             self.remaining = self.package.count
-            if self.package.type == "offer" :
-                self.price = self.package.price
-            if self.package.type == "resume" :
-                self.price = self.package.price * self.package.count
+            # if self.package.type == "offer" :
+            #     self.price = self.package.price
+            # if self.package.type == "resume" :
+            #     self.price = self.package.price * self.package.count
         super().save(*args , **kwargs)
     
  

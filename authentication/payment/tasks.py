@@ -1,10 +1,12 @@
 from celery import shared_task
 from . import utils
 from django.db import transaction
+from guardian.shortcuts import assign_perm
 # local imports 
 from account.models import Message
 from account.tasks import send_order_email , send_order_sms
 from employer.models import EmployerOrder
+from package.models import PurchasedPackage
 from .models import Payment  # ensure this is imported properly
 
 @shared_task(bind=True, default_retry_count=15, max_retries=20)
@@ -35,6 +37,12 @@ def fail_payment_if_unpaid(self, payment_id, retry_count=0):
                 # send email for the order 
                 message = Message.objects.create(email=user.email ,type="order" , kind="email")
                 send_order_email.apply_async(args=[user.email , order_id , message.pk])
+            # adding purchased package
+            items = order.order_items.all()
+            for item in items :
+                purchase_package = PurchasedPackage.objects.create(package=item.package , employer=payment.employer , payment=payment )
+                assign_perm("view_purchasepackage" , user , purchase_package)
+                
         return "completed"
 
     # Handle retries

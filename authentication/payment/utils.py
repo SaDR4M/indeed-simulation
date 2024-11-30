@@ -15,18 +15,25 @@ MERCHANT_ID = os.getenv('MERCHANT_ID')
 
 
 def get_authority(amount) :
-    url = 'https://payment.zarinpal.com/pg/v4/payment/request.json'
-    response = requests.post(url , {
-        "amount" : int(amount),
-        "description" : DESCRIPTION,
-        "merchant_id" : MERCHANT_ID,
-        "callback_url" : CALLBACK_URL
-    })
-    data = response.json()['data']
+    print(
+        "authority test"
+    )
+    try :
+        url = 'https://payment.zarinpal.com/pg/v4/payment/request.json'
+        response = requests.post(url , {
+            "amount" : int(amount),
+            "description" : DESCRIPTION,
+            "merchant_id" : MERCHANT_ID,
+            "callback_url" : CALLBACK_URL
+        })
+        data = response.json()['data']
+    except Exception as e :
+        return f"Error when getting the authority : {e}"
     if data :
         if data['code'] == 100:
             authority = data['authority']
             return authority
+    print("success")
     return None
 
 def payment_link(authority) :

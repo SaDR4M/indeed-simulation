@@ -28,7 +28,7 @@ from .utils import (
 )
 from account import tasks
 from . import docs
-from .documents import UserDocument
+# from .documents import UserDocument
 # Create your views here.
 
 # sign in the user with password
@@ -152,11 +152,11 @@ class GetOtp(APIView) :
             return Response(data={"detail" : "contact must be entered"} , status=status.HTTP_400_BAD_REQUEST)
         # send the otp to the user phone
         otp = create_otp(contact , type)
-        s = UserDocument.search().query("match" , email="mjanloo83@gmail.com")
-        result = s.execute()
-        for hit in result :
-            print(hit.email)
-            print(hit.phone)
+        # s = UserDocument.search().query("match" , email="mjanloo83@gmail.com")
+        # result = s.execute()
+        # for hit in result :
+        #     print(hit.email)
+        #     print(hit.phone)
         if otp :
             return Response(data={"otp_sent" : True , "otp" : otp} , status=status.HTTP_200_OK)
         return Response(data={"detail" : f"try later"} , status=status.HTTP_400_BAD_REQUEST)

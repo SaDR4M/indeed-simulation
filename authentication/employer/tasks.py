@@ -1,0 +1,112 @@
+# third party imports
+from celery import shared_task
+
+
+# local imports
+from account.tasks import send_email
+from job_seeker.models import Application
+
+@shared_task(default_retry_count=30 , max_retries=5)
+def send_resume_status(apply_pk , log_pk) :
+
+    
+    try :
+        apply = Application.objects.get(pk=apply_pk)
+        employer = apply.job_opportunity.employer.user.email
+    except Exception as e:
+        return f"error occured while getting the job applications : {e}"
+    
+    if apply.status == "seen" :
+        status = "رزومه شما توسط کارفرما دیده شد"
+    elif apply.status == "interview" :
+        status = "وضعیت رزومه شما توسط کارفرما به دعوت مصاحبه تغییر پیدا کرد"
+    elif apply.status == "accepted" :
+        status = "وضعیت رزومه شما توسط کارفرما به تایید شده تغییر پیدا کرد"
+         
+    job_offer = apply.job_opportunity.title
+    content = f"""
+    <!DOCTYPE html>
+    <html lang="fa">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>تغییر وضعیت رزومه</title>
+        <style>
+            /* فونت وزیر */
+            @import url('https://fonts.googleapis.com/css2?family=Vazir&display=swap');
+            
+            body {{
+                font-family: 'Vazir', sans-serif;
+                direction: rtl;
+                background-color: #f4f4f4;
+                margin: 0;
+                padding: 0;
+            }}
+            .email-container {{
+                width: 100%;
+                max-width: 600px;
+                margin: 20px auto;
+                background-color: #fff;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            }}
+            .email-header {{
+                text-align: center;
+                margin-bottom: 20px;
+            }}
+            .email-header h1 {{
+                color: #0073e6;
+                font-size: 24px;
+            }}
+            .email-body {{
+                font-size: 16px;
+                line-height: 1.5;
+                color: #333;
+            }}
+            .email-footer {{
+                text-align: center;
+                margin-top: 30px;
+                font-size: 14px;
+                color: #777;
+            }}
+            .button {{
+                background-color: #0073e6;
+                color: #fff;
+                padding: 10px 20px;
+                text-decoration: none;
+                border-radius: 5px;
+                margin-top: 20px;
+                display: inline-block;
+            }}
+            .button:hover {{
+                background-color: #005bb5;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="email-container">
+            <div class="email-header">
+                <h1>تغییر وضعیت رزومه شما</h1>
+            </div>
+            <div class="email-body">
+                <p>سلام کارجو عزیز </p>
+                <p> وضعیت جدید رزومه شما به شرح زیر است:</p>
+                <p><strong>وضعیت جدید: {status}</strong></p>
+                <p>برای کسب اطلاعات بیشتر و بررسی وضعیت رزومه خود، لطفاً بر روی دکمه زیر کلیک کنید:</p>
+                <a href="http://yourcompany.com/applications/{apply_pk}" class="button">مشاهده وضعیت</a>
+            </div>
+            <div class="email-footer">
+                <p>با تشکر،</p>
+                <p>تیم پشتیبانی</p>
+                <p>شرکت {job_offer}</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    send_email.apply_async(args=["تغییر وضعیت رزومه" , content , employer , log_pk])
+    
+
+    

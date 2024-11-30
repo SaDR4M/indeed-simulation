@@ -58,6 +58,9 @@ class User(AbstractUser) :
 
     def __str__(self):
         return f'{self.phone} - {self.email}'
+    
+    class Meta :
+        models.Index(fields=['phone' , 'email'])
 
 
 class Message(models.Model) :
@@ -75,6 +78,7 @@ class Message(models.Model) :
         OTP = "otp" , "Otp"
         LOGIN = "login" , "Loign"
         ORDER = "order" , "Order"
+        RESUME = "resume" , "Resume"
         
     class MessageStatus(models.TextChoices) :
         PENDING = "pending" , "Pending"

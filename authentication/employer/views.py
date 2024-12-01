@@ -845,7 +845,7 @@ class EmployerInterviewSchedule(APIView , InterviewScheduleMixin) :
         if isinstance(interview , Response) :
             return interview
         
-        conflict = self.check_conflict(interview.pk , employer_time , apply )
+        conflict = self.check_conflict(interview.pk , employer_time , apply , "employer")
         if isinstance(conflict , Response) :
             return conflict
 
@@ -853,6 +853,7 @@ class EmployerInterviewSchedule(APIView , InterviewScheduleMixin) :
         serializer = ChangeInterviewEmployerScheduleSerializer(interview ,data=request.data , partial=True)
         if serializer.is_valid() :  
             job_seeker_time = interview.job_seeker_time
+            employer_time = serializer.validated_data['employer_time']
             if job_seeker_time :
                 if job_seeker_time == employer_time :
                     serializer.validated_data['status'] = 'approved'

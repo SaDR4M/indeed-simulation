@@ -383,7 +383,6 @@ class JobSeekerInterviewSchedule(APIView , InterviewScheduleMixin) :
 
         job_seeker_time = request.data.get('job_seeker_time')
         apply_id = request.data.get("apply_id")
-        job_seeker_time = request.data.get("job_seeker_time")
         
         apply = self.check_apply_and_permissions(apply_id , user , kind="job_seeker")
         if isinstance(apply , Response) :
@@ -393,7 +392,7 @@ class JobSeekerInterviewSchedule(APIView , InterviewScheduleMixin) :
         if isinstance(interview , Response) :
             return interview
         
-        conflict = self.check_conflict(interview.pk , job_seeker_time , apply)
+        conflict = self.check_conflict(interview.pk , job_seeker_time , apply , "job_seeker")
         if isinstance(conflict , Response) :
             return conflict
 
@@ -401,13 +400,14 @@ class JobSeekerInterviewSchedule(APIView , InterviewScheduleMixin) :
         
         serializer = ChangeInterviewJobSeekerScheduleSerializer(interview ,data=request.data , partial=True)
         if serializer.is_valid() :  
+            job_seeker_time = serializer.validated_data['job_seeker_time']
             employer_time = interview.employer_time
             if employer_time :
                 if employer_time == job_seeker_time :
                     serializer.validated_data['status'] = 'approved'
                     serializer.validated_data['interview_time'] = employer_time
                 if job_seeker_time != employer_time :
-                    # serializer.validated_data['employer_time'] = None
+                    print("Test3")
                     serializer.validated_data['status'] = 'rejected_by_jobseeker'
                     
             serializer.save()

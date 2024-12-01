@@ -38,7 +38,6 @@ class InterviewScheduleMixin:
             if not job_seeker.user.has_perm("change_interviewschedule", apply ) :
                 return Response(data={"error" : "user does not have permission"} , status=status.HTTP_403_FORBIDDEN)
         
-               
         return apply
 
         
@@ -56,16 +55,24 @@ class InterviewScheduleMixin:
         return interview
         
         
-        
-    def check_conflict(self , interview_pk , time, apply ) :
-
+    def check_conflict(self , interview_pk , time, apply , kind ) :
+            
+        print(interview_pk)
         # employer conflict with its own time
-        employer_conflict = InterviewSchedule.objects.filter(apply__job_opportunity__employer = apply.job_opportunity.employer , apply__status="interview").exclude(pk=interview_pk , status="rejected").filter(employer_time__in = [time])
+        employer_conflict = InterviewSchedule.objects.filter(apply__job_opportunity__employer = apply.job_opportunity.employer , apply__status="interview").exclude(pk=interview_pk).filter(employer_time__in = [time])
             
         if employer_conflict.exists() :
-            return Response(data={"error" : "conflict with its own time" , "fa_error" : "شما مصحاحبه ای با تایم داده شده دارید"} , status=status.HTTP_400_BAD_REQUEST)
+            if kind == "employer" :
+                return Response(data={"error" : "conflict with its own time" , "fa_error" : "شما مصحاحبه ای با تایم داده شده دارید"} , status=status.HTTP_400_BAD_REQUEST)
+            if kind == "job_seeker" :
+                return Response(data={"error" : "conflict with its employer time" , "fa_error" :"کافرما در زمان داده شده مصاحبه ای دارد"} , status=status.HTTP_400_BAD_REQUEST)
+            
+            
         # job seeker conflict with employer time
         job_seeker_conflict = InterviewSchedule.objects.filter(apply__job_seeker = apply.job_seeker , apply__status = "interview").exclude(pk=interview_pk  , status="rejected").filter(job_seeker_time__in = [time])
         
         if job_seeker_conflict.exists() :
-            return Response(data={"error" : "conflict with job seeker time" , "fa_error" : "کارجو/کارفرما در زمان داده شده مصاحبه ای دارد"}, status=status.HTTP_400_BAD_REQUEST)
+            if kind == "employer" :
+               return Response(data={"error" : "conflict with job seeker time" , "fa_error" : "کارجو در زمان داده شده مصاحبه ای دارد"}, status=status.HTTP_400_BAD_REQUEST)
+            if kind == "job_seeker" : 
+             return Response(data={"error" : "conflict with its own time" , "fa_error" : "شما مصحاحبه ای با تایم داده شده دارید"} , status=status.HTTP_400_BAD_REQUEST)

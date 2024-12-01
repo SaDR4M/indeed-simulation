@@ -3,6 +3,9 @@ from rest_framework import serializers
 from rest_framework.parsers import MultiPartParser, FormParser
 # local imports
 from .models import JobSeeker , Resume , Application
+from employer.models import InterviewSchedule
+
+
 
 class JobSeekerSerializer(serializers.ModelSerializer):
     class Meta :
@@ -21,4 +24,11 @@ class ApplicationSerializer(serializers.ModelSerializer):
     id = serializers.CharField(required=True)
     class Meta:
         model = Application
-        exclude = ['job_seeker' , 'job_opportunity']
+        exclude = ['job_seeker' , 'job_opportunity' , 'status']
+
+
+class ChangeInterviewJobSeekerScheduleSerializer(serializers.ModelSerializer) :
+    job_seeker_time = serializers.DateTimeField(required=False)
+    class Meta :
+        model = InterviewSchedule
+        exclude = ['status' , 'employer_time']

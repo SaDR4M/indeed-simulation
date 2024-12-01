@@ -77,9 +77,10 @@ class InterviewSchedule(models.Model) :
     class InterViewStatus(models.TextChoices) :
         PENDING = "pending"
         APPROVED = "approved"
-        REJECTED = "rejected"
+        REJECTED_BY_EMPLOYER = "rejected_by_employer"
+        REJECTED_BY_JOBSEEKER = 'rejected_by_jobseeker'
         CONFLICT = "conflict"
-    apply = models.ForeignKey("job_seeker.Application" , on_delete=models.CASCADE , related_name="schedules")
+    apply = models.OneToOneField("job_seeker.Application" , on_delete=models.CASCADE , related_name="schedules")
     job_seeker_time = models.DateTimeField(null=True , blank=True)
     employer_time = models.DateTimeField(null=True , blank=True)
     interview_time= models.DateTimeField(null=True , blank=True)

@@ -12,13 +12,14 @@ from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from django.db import transaction
 from package.serializers import PackageSerializer
+from django.utils.timezone import make_aware , make_naive
 # local imports
 from .serializers import (EmployerSerializer,
                           JobOpportunitySerializer,
                           ViewedResumeSerializer,
                           ChangeApllyStatusSerializer,
                           CartSerializer,
-                          CartItemSerializer, OrderSerializer, OrderItemSerializer,
+                          CartItemSerializer, OrderSerializer, OrderItemSerializer, ChangeInterviewEmployerScheduleSerializer , InterviewScheduleSerializer
                           )
                           
 from .models import Employer, JobOpportunity, ViewedResume , EmployerCart , EmployerCartItem , EmployerOrderItem , EmployerOrder , InterviewSchedule
@@ -30,6 +31,7 @@ from package.models import PurchasedPackage, Package
 from .utils import can_create_offer, employer_exists
 from celery.result import AsyncResult
 from job_seeker.utils import job_seeker_exists
+from .mixins import InterviewScheduleMixin
 # sms
 from account.tasks import send_order_sms , send_order_email
 from account.models import Message
@@ -510,7 +512,7 @@ class JobOffer(APIView) :
             purchased_packages.remaining -= 1
             purchased_packages.save()
             message = Message.objects.create(type="expire" , kind="email" , email=user.email)
-            warning_eta = offer.expire_at - datetime.timedelta(days=2)
+            warning_eta = offer.expire_at - datetime.timedelta(hours=2)
             tasks.expire_job_offer_warning.apply_async(args=[offer.pk , message.pk] , eta=warning_eta)
             tasks.expire_job_offer.apply_async(args=[offer.pk  ,message.pk] , eta=offer.expire_at)
             # offer.remaining -= 1
@@ -615,7 +617,7 @@ class ResumesForOffer(APIView) :
         responses={
             200 : ApplicationSerializer,
             400 : "invalid parameters",
-            404 : "employer/offeer was not found",
+            404 : "employer/offer was not found",
         }
     )
     def get(self , request) :
@@ -650,7 +652,7 @@ class AllResumes(APIView) :
         responses={
             200 : ResumeSerializer,
             400 : "invalid parameters",
-            404 : "employer/offeer was not found",
+            404 : "employer/offer was not found",
         },
         security=[{"Bearer" : []}]
     )
@@ -678,7 +680,7 @@ class ResumeViewer(APIView) :
         responses={
             200 : "success",
             400 : "invalid parameters",
-            404 : "employer/offeer was not found",
+            404 : "employer/offer was not found",
         },
         security=[{"Bearer" : []}]
     )
@@ -735,7 +737,17 @@ class ResumeViewer(APIView) :
 
 # employer change the status of the applies
 class ChangeApplyStatus(APIView) :
-    
+    @swagger_auto_schema(
+        operation_summary="update the status of the apply ",
+        operation_description="employer can update the status of apply with this options reject/accepet/interview",
+        request_body=ChangeApllyStatusSerializer,
+        responses={
+            200 : "success",
+            400 : "invalid parameters",
+            404 : "employer/job apply was not found",
+        },
+        security=[{"Bearer" : []}]
+    )
     def patch(self , request) :
         user = request.user 
         apply_id = request.data.get('apply_id') 
@@ -748,6 +760,9 @@ class ChangeApplyStatus(APIView) :
         if not employer :
             return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
         # check that the offer is for the employer or not 
+        
+        if not user.has_perm("change_application") :
+            return Response(data={"error" : "user does not have permission to do this action"} , status=HTTP_403_FORBIDDEN)
         try :
             apply = Application.objects.get(pk=apply_id , job_opportunity__employer=employer)
         except Application.DoesNotExist :
@@ -760,131 +775,97 @@ class ChangeApplyStatus(APIView) :
             serializer.save()
             # create schedule for the apply if the status is interview
             if status == "interview" :
-                print("test")
-                schedule = InterviewSchedule.objects.create(apply=apply)
+                # check that if there is schedule or not 
+                schedule = InterviewSchedule.objects.filter(apply=apply) 
+                if schedule.exists() :
+                    return Response(data={"error" : "there is schedule for this apply" , "fa_error" : "برنامه برای مصاحبه وجود دارد"} , status=HTTP_400_BAD_REQUEST)
+                schedule = InterviewSchedule.objects.create(apply=apply) 
+                # give permission to the schedule to the user (employer) and the apply job seeker
                 assign_perm("view_interviewschedule" , user , schedule)
                 assign_perm("change_interviewschedule" , user , schedule)
+                assign_perm("view_interviewschedule" , apply.job_seeker.user , schedule)
+                assign_perm("change_interviewschedule" ,  apply.job_seeker.user  , schedule)
             # send the status to the job seeker
             message = Message.objects.create(type="resume" , kind="email"  , email=user.email)
             tasks.send_resume_status.apply_async(args=[apply.pk , message.pk])
             return Response(data={"success" : True , "data" : serializer.data} , status=HTTP_200_OK)
         return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
 
-
-    
-class ChangeInterviewSchedule(APIView) :
-    
-     def get(self , request) :
-         pass
-     
-    
-     
-     def patch(self, request) : 
+        
+  
+class EmployerInterviewSchedule(APIView , InterviewScheduleMixin) :
+    @swagger_auto_schema(
+        operation_summary="list of employer interview schedules",
+        operation_description="employers can get their own schedule",
+        responses={
+            200 : InterviewScheduleSerializer,
+            400 : "invalid parameters",
+            403 : "does not have permission",
+            404 : "employer was not found",
+        },
+        security=[{"Bearer" : []}]
+    )
+    # list of employer interview schedule
+    def get(self , request):
         user = request.user
-        employer_time = request.data.get("employer_time")
-        job_seeker_time = request.data.get("job_seeker_time")
+        employer = employer_exists(user)
+        if not employer :
+            return Response(data={"error" : "employer does not exists"} ,status=HTTP_404_NOT_FOUND )
+        # get the schedule base on employer
+        interviews = InterviewSchedule.objects.filter(apply__job_opportunity__employer = employer ).exclude(status__in = ["rejected_by_employer" , "rejected_by_jobseeker"])
+        serializer = InterviewScheduleSerializer(interviews , many=True)
+        return Response(data={"data" : serializer.data} , status=HTTP_200_OK)
+    
+    
+    
+    
+    @swagger_auto_schema(
+        operation_summary="update the interview time of the job apply ",
+        operation_description="employer can suggest the time of the interview then if the job seeker accept it will be set as interview time",
+        request_body=ChangeInterviewEmployerScheduleSerializer,
+        responses={
+            200 : "success",
+            400 : "invalid parameters",
+            403 : "does not have permission",
+            404 : "employer/interview/apply was not found",
+        },
+        security=[{"Bearer" : []}]
+    )
+    def patch(self , request) :
+        user = request.user
+        
         apply_id = request.data.get("apply_id")
+        employer_time = request.data.get("employer_time")
+        
+        apply = self.check_apply_and_permissions(apply_id ,user , "employer" )
+        if isinstance(apply , Response) :
+            return apply
+        
+        interview = self.check_interview(apply)
+        if isinstance(interview , Response) :
+            return interview
+        
+        conflict = self.check_conflict(interview.pk , employer_time , apply )
+        if isinstance(conflict , Response) :
+            return conflict
 
         
-        if not employer_time and not job_seeker_time :
-            return Response(data={"error" : "employer_time or job_seeker_time must be entered"} , status=HTTP_400_BAD_REQUEST)
-        if not apply_id :
-            return Response(data={"error" : "apply id must be entered"} , status=HTTP_400_BAD_REQUEST)
+        serializer = ChangeInterviewEmployerScheduleSerializer(interview ,data=request.data , partial=True)
+        if serializer.is_valid() :  
+            job_seeker_time = interview.job_seeker_time
+            if job_seeker_time :
+                if job_seeker_time == employer_time :
+                    serializer.validated_data['status'] = 'approved'
+                    serializer.validated_data['interview_time'] = job_seeker_time
+                if job_seeker_time != employer_time :
+                    # interview.job_seeker_time = None
+                    serializer.validated_data['status'] = 'rejected_by_employer'
+            serializer.save()
+                
+            return Response(data={"success" : True ,"data" : serializer.data ,"interview_time" :  interview.interview_time } , status=HTTP_200_OK)
+        return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
         
-        try :
-            apply = Application.objects.get(pk=apply_id)
-            job_seeker = apply.job_seeker
-            employer = apply.job_opportunity.employer
-        except Application.DoesNotExist :
-            return Response(data={"error" : "there is no apply with this id" , "fa_error" : "موقعیت شغلی با این مشخصات پیدا نشد"} , status=HTTP_404_NOT_FOUND)
-        
-        if not  user.has_perm("change_application", apply ) :
-            return Response(data={"error" : "user does not have permission"} , status=HTTP_403_FORBIDDEN)
-        
-        try :
-            interview = InterviewSchedule.objects.get(apply=apply)
-        except InterviewSchedule.DoesNotExist :
-            return Response(data={"error" : "interview schedule does not exists"} , status=HTTP_404_NOT_FOUND)
-        
-        if interview.status == "approved" :
-            return Response(data={"error" : "schedule time can not be changed"} , status=HTTP_400_BAD_REQUEST)
-        
-        employer_conflict = InterviewSchedule.objects.filter(apply__job_opportunity__employer = employer , apply__status="interview" , status = "pending").exclude(pk=interview.pk).filter(employer_time__in = [employer_time , job_seeker_time])
-        
-        job_seeker_conflict = InterviewSchedule.objects.filter(apply__job_seeker = job_seeker , apply__status = "interview" , status = "pending").exclude(pk=interview.pk).filter(job_seeker_time__in = [employer_time , job_seeker_time])
-        
-        if employer_conflict.exists() :
-            interview.status = "rejected"
-            interview.save()
-            return Response(data={"error" : "conflict with employer time"})
-        
-        if job_seeker_conflict.exists() :
-            interview.status = "rejected"
-            interview.save()
-            return Response(data={"error" : "conflict with job seeker time "})
-        
-        if employer_time :
-            interview.employer_time = employer_time
-            interview.status = "pending"
-        
-        if job_seeker_time :
-            interview.job_seeker_time = job_seeker_time
-            interview.status = "pending"
-             
-        if interview.employer_time == interview.job_seeker_time :
-            interview.interview_time = employer_time
-            interview.status = "approved"
-            interview.save()
-            
-        return Response(data={"succes" : True , "interview_time" : interview.employer_time} , status=HTTP_200_OK)
-        
-        
-        # check conflict of the employer
-        # employer_applies = Application.objects.filter(job_opportunity__employer=employer , status = "interview").prefetch_related("schedules")
-        
-        # employer_schedules = employer_applies.schedules.all()
-        # for schedule in employer_schedules :
-        #     if schedule.employer_time == employer_time or schedule.employer_time == job_seeker_time:
-        #         return Response(data={"error" : "conflict time"} , status=HTTP_400_BAD_REQUEST)
-            
-        # job_seeker_applies = Application.objects.filter(job_opportunity__job_seeker=job_seeker , status = "interview").prefetch_related("schedule")
-        # job_seeker_schedule = job_seeker_applies.schedules.all()
-        # for schedule in job_seeker_schedule :
-        #     if schedule.job_seeker_time == job_seeker or schedule.job_seeker_time == employer_time :
-        #         return Response(data={"error" : "conflict time"} , status=HTTP_400_BAD_REQUEST) 
-        
-        # interview.employer_time = employer_time
-        # interview.job_seeker_time = job_seeker_time
-        # interview.save()
-        
-        # if interview.employer_time == interview.job_seeker_time :
-        #         interview.interview_time = employer_time
-        #         interview.status = "approved"
-        #         interview.save()
-        #         return Response(data={"success" : True , "interview_time" : employer_time} , status=HTTP_200_OK)
-            
-        
-        # if employer_time == job_seeker_time :
-        #     interview.interview_time = employer_time
-        #     interview.status = "approved"
-        # if employer_time :
-        #     interview.employer_time == employer_time
-        # if job_seeker_time :
-        #     interview.job_seeker_time == job_seeker_time
-            
-        
-        
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+
   
   
     
@@ -898,7 +879,7 @@ class ChangeJobOfferStatus(APIView) :
         responses={
             200 : JobOpportunitySerializer,
             400 : "invalid parameters",
-            404 : "employer/offeer was not found",
+            404 : "employer/offer was not found",
         },
         security=[{"Bearer" : []}]
     )

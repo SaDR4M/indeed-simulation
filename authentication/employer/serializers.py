@@ -4,7 +4,7 @@ from rest_framework.validators import ValidationError
 from rest_framework import serializers
 
 # local import
-from employer.models import Employer, JobOpportunity, ViewedResume, EmployerCartItem, EmployerCart, EmployerOrder, EmployerOrderItem
+from employer.models import Employer, JobOpportunity, ViewedResume, EmployerCartItem, EmployerCart, EmployerOrder, EmployerOrderItem ,InterviewSchedule
 from package.models import Package
 from job_seeker.models import Resume , Application
 
@@ -69,3 +69,17 @@ class OrderItemSerializer(serializers.ModelSerializer) :
         model = EmployerOrderItem
         exclude = ['order']
 
+
+
+class InterviewScheduleSerializer(serializers.ModelSerializer) :
+    class Meta:
+        model = InterviewSchedule
+        fields = '__all__'
+
+
+
+class ChangeInterviewEmployerScheduleSerializer(serializers.ModelSerializer) :
+    employer_time = serializers.DateTimeField(required=False)
+    class Meta :
+        model = InterviewSchedule
+        exclude = ['status' , 'job_seeker_time']

@@ -7,4 +7,5 @@ urlpatterns = [
     path('resume/' , views.ResumeRegister.as_view(), name='resume-job-seeker'),
     path('apply/', views.ApplyForJob.as_view(), name="employer_aplly"),
     path('job-applies/' , views.AppliesForJob.as_view(), name="job-applies"),
+    path('jobseeker-interview-schedule/' , views.JobSeekerInterviewSchedule.as_view() , name="schedule_time"),
 ]

@@ -15,6 +15,10 @@ from .models import JobSeeker, Resume , Application
 from .serializers import JobSeekerSerializer, ResumeSerializer , ApplicationSerializer
 from account.models import User
 from . import utils
+from .serializers import ChangeInterviewJobSeekerScheduleSerializer
+from employer.serializers import InterviewScheduleSerializer
+from employer.models import InterviewSchedule    
+from employer.mixins import InterviewScheduleMixin
 # Create your views here.
 
 class JobSeekerRegister(APIView) :
@@ -261,6 +265,7 @@ class ApplyForJob(APIView):
             return Response(data={"detail" : "there is no job seeker asign to this user"} , status=status.HTTP_404_NOT_FOUND)
 
         serializer = ApplicationSerializer(data=request.data)
+        
         if serializer.is_valid() :
             data = serializer.validated_data
             job_opportunity_pk = data['id']
@@ -280,6 +285,8 @@ class ApplyForJob(APIView):
             # assign the permission to view/delete the offer later
             assign_perm('view_application' , user , application)
             assign_perm('delete_application' , user , application)
+            assign_perm('view_application' , job_opportunity.employer.user , application)
+            assign_perm('change_application' , job_opportunity.employer.user , application)
             return Response(data={"detail" : "job application was successfull"} , status=status.HTTP_201_CREATED)
 
         return Response(data={"errors" : serializer.errors} , status=status.HTTP_400_BAD_REQUEST)
@@ -333,3 +340,76 @@ class AppliesForJob(APIView):
         return Response(data={"detail" : serializer.data}, status=status.HTTP_200_OK)
     
 
+    
+class JobSeekerInterviewSchedule(APIView , InterviewScheduleMixin) : 
+    @swagger_auto_schema(
+        operation_summary="list of job seeker interview schedules",
+        operation_description="job seekers can get their own schedule",
+        responses={
+            200 : InterviewScheduleSerializer,
+            400 : "invalid parameters",
+            403 : "does not have permission",
+            404 : "job seeker was not found",
+        },
+        security=[{"Bearer" : []}]
+    )
+    def get(self , request):
+        user = request.user
+        job_seeker = utils.job_seeker_exists(user)
+        if not job_seeker :
+            return Response(data={"error" : "employer does not exists"} ,status=status.HTTP_404_NOT_FOUND )
+        # get the schedule base on employer
+        interviews = InterviewSchedule.objects.filter(apply__job_seeker = job_seeker ).exclude(status__in = ["rejected_by_employer" , "rejected_by_jobseeker"])
+        serializer = InterviewScheduleSerializer(interviews , many=True)
+        return Response(data={"data" : serializer.data} , status=status.HTTP_200_OK)
+    
+    
+    
+    
+    @swagger_auto_schema(
+        operation_summary="accept or suggest the interview time of the job apply ",
+        operation_description="job seekers can accept or suggest new time instead of the employer time for the interview if employer accept the time it will be set as interview time",
+        request_body=ChangeInterviewJobSeekerScheduleSerializer,
+        responses={
+            200 : "success",
+            400 : "invalid parameters",
+            403 : "does not have permission",
+            404 : "employer/job apply was not found",
+        },
+        security=[{"Bearer" : []}]
+    )
+    def patch(self , request) :
+        user = request.user
+
+        job_seeker_time = request.data.get('job_seeker_time')
+        apply_id = request.data.get("apply_id")
+        job_seeker_time = request.data.get("job_seeker_time")
+        
+        apply = self.check_apply_and_permissions(apply_id , user , kind="job_seeker")
+        if isinstance(apply , Response) :
+            return apply
+        
+        interview = self.check_interview(apply)
+        if isinstance(interview , Response) :
+            return interview
+        
+        conflict = self.check_conflict(interview.pk , job_seeker_time , apply)
+        if isinstance(conflict , Response) :
+            return conflict
+
+        
+        
+        serializer = ChangeInterviewJobSeekerScheduleSerializer(interview ,data=request.data , partial=True)
+        if serializer.is_valid() :  
+            employer_time = interview.employer_time
+            if employer_time :
+                if employer_time == job_seeker_time :
+                    serializer.validated_data['status'] = 'approved'
+                    serializer.validated_data['interview_time'] = employer_time
+                if job_seeker_time != employer_time :
+                    # serializer.validated_data['employer_time'] = None
+                    serializer.validated_data['status'] = 'rejected_by_jobseeker'
+                    
+            serializer.save()
+            return Response(data={"success" : True ,"data" : serializer.data ,"interview_time" :  interview.interview_time } , status=status.HTTP_200_OK)
+        return Response(data={"errors" : serializer.errors} , status=status.HTTP_400_BAD_REQUEST)

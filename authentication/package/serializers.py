@@ -42,7 +42,7 @@ class PurchasePackageSerializer(serializers.ModelSerializer) :
     payment = serializers.PrimaryKeyRelatedField(queryset=Payment.objects.all())
     class Meta :
         model = PurchasedPackage
-        exclude = ['employer' ,'price' , 'remaining']
+        exclude = ['employer' , 'remaining']
     
     def validate_payment(self , attr) :
         user = self.context.get('request').user

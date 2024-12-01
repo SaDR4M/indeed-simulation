@@ -69,7 +69,8 @@ get_otp_document = {
     "operation_summary" : "Get otp",
     "operation_description" : "Get the otp for the phone number",
     "manual_parameters" : [
-        openapi.Parameter('phone', openapi.IN_QUERY, description="otp for the phone number", type=openapi.TYPE_STRING,
+        openapi.Parameter('contact', openapi.IN_QUERY, description="otp for the contact", type=openapi.TYPE_STRING,required=True, minlength=11),
+        openapi.Parameter('type', openapi.IN_QUERY, description="type of contact", type=openapi.TYPE_STRING,
                           required=True, minlength=11)],
     "responses" : {
         200: openapi.Response(description="otp", examples={"application/json": [{"otp": "123456", "otp_sent": True}]}),

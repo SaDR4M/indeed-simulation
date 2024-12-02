@@ -1,18 +1,18 @@
-from mmap import error
-
+import datetime
 from django.shortcuts import render
 # third party imports
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from guardian.shortcuts import assign_perm
+from guardian.shortcuts import assign_perm , get_objects_for_user
 from rest_framework.parsers import MultiPartParser, FormParser
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+
 # local imports
 from employer.models import JobOpportunity
-from .models import JobSeeker, Resume , Application
-from .serializers import JobSeekerSerializer, ResumeSerializer , ApplicationSerializer
+from .models import JobSeeker, Resume , Application , Test , QuestionAndAnswers
+from .serializers import JobSeekerSerializer, ResumeSerializer , ApplicationSerializer , TestSerializer , QuestionAndAnswersSerializer
 from account.models import User
 from . import utils
 from .serializers import ChangeInterviewJobSeekerScheduleSerializer
@@ -413,3 +413,354 @@ class JobSeekerInterviewSchedule(APIView , InterviewScheduleMixin) :
             serializer.save()
             return Response(data={"success" : True ,"data" : serializer.data ,"interview_time" :  interview.interview_time } , status=status.HTTP_200_OK)
         return Response(data={"errors" : serializer.errors} , status=status.HTTP_400_BAD_REQUEST)
+
+
+
+        
+class ParticapteTest(APIView) :
+    # list of test that user participated
+    def get(self , request) :
+        user = request.user
+        job_seeker = utils.job_seeker_exists(user) 
+        if not job_seeker :
+            return Response(data={"error" : "job seeker does not exists"} , status=status.HTTP_404_NOT_FOUND)
+        
+        try :
+            resume = Resume.objects.prefetch_related("test").get(job_seeker=job_seeker)
+        except :
+            return Response(data={"error" : "error occured"} , status=status.HTTP_400_BAD_REQUEST)
+        
+        tests = resume.test.all()
+        serializer = TestSerializer(tests , many=True)
+        return Response(data={"data" : serializer.data} , status=status.HTTP_200_OK)
+        
+    def post(self , request) :
+        user = request.user
+        job_seeker = utils.job_seeker_exists(user) 
+        if not job_seeker :
+            return Response(data={"error" : "job seeker does not exists"} , status=status.HTTP_404_NOT_FOUND)
+        
+        test_id = request.data.get("test_id")
+        if not test_id:
+            return Response(data={"error" : "test_id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+        
+        try :
+            test = Test.objects.get(pk=test_id , active=True)
+        except Test.DoesNotExist :
+            return Response(data={"error" : "there is test with this data"  , "fa_error" : "آزمونی با این مشخصات وجود ندارد"} , status=status.HTTP_404_NOT_FOUND)
+        
+        test_with_question = Test.objects.prefetch_related('questions').get(pk=test_id)
+        questions = test_with_question.questions.all()
+        # add test to the resume
+        try :
+            resume = Resume.objects.get(job_seeker=job_seeker)
+        except Resume.DoesNotExist :
+            return Response(data={"error" : "resume does not exists"} , status=status.HTTP_404_NOT_FOUND)
+    
+        resume.test.add(test)
+        
+        serializer = QuestionAndAnswersSerializer(questions , many=True)
+        return Response(data={"success" : "True" , "data" : serializer.data} , status=status.HTTP_200_OK)
+        
+    
+           
+        
+        
+        
+class AnswerQuestion(APIView) :
+    
+    def get(self , request) :
+        
+        user = request.user
+        job_seeker =  utils.job_seeker_exists(user)
+        if not job_seeker:
+            return Response(data={"error" : "job seeker does not exists"} , status=status.HTTP_404_NOT_FOUND)
+        
+        test_id = request.data.get('test_id')
+        if not test_id :
+            return Response(data={"error" : "test_id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+        
+        try :
+            test = Test.objects.get(pk=test_id , active=True)
+        except Test.DoesNotExist :
+            return Response(data={"error" : "test does not exists"} , status=status.HTTP_404_NOT_FOUND)
+        
+        qa = QuestionAndAnswers.objects.filter(user=user  , test=test)
+        if not qa :
+            return Response(data={"error" : "there is no quesiton/answer"} , status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = QuestionAndAnswersSerializer(qa , many=True)
+        return Response(data={"data" : serializer.data }, status=status.HTTP_200_OK)
+          
+    
+    def post(self , request) :
+        user = request.user
+        job_seeker =  utils.job_seeker_exists(user)
+        if not job_seeker:
+            return Response(data={"error" : "job seeker does not exists"} , status=status.HTTP_404_NOT_FOUND)
+        
+
+        
+        question_id = request.data.get('question_id')
+        if not question_id :
+            return Response(data={"error" : "question_id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+        
+        try :
+            qa = QuestionAndAnswers.objects.get(pk=question_id , active=True)
+        except QuestionAndAnswers.DoesNotExist :
+            return Response(data={"error" : "question does not exists"} , status=status.HTTP_404_NOT_FOUND)
+        
+        if qa.user == user or qa.answer :
+            return Response(data={"error" : "you have answered this question before" })
+        
+        answer = request.data.get('answer')
+        if not answer :
+            return Response(data={"error" : "answer must be entered" } , status=status.HTTP_400_BAD_REQUEST)
+        
+        try :
+            Resume.objects.filter(test=qa.test , job_seeker=job_seeker)
+        except :
+            return Response(data={"error" : "there was an error occured"} , status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = QuestionAndAnswersSerializer(qa , data=request.data , partial=True)
+        if serializer.is_valid() :
+            serializer.save()
+            return Response(data={"success" : True , "data" : serializer.data} , status=status.HTTP_200_OK)
+        
+        return Response(data={"errors" : serializer.errors} , status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# TODO add this to admin app
+# TODO refactor the code
+# admin only for job seekers
+class MangeTest(APIView) :
+    # get this list of active/ non active test  s  
+    def get(self , request) :
+        user = request.user
+        if not user.is_superuser :
+            return Response(data={"error" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
+        
+        # get all test that user have permission on it to view it
+        active_test = Test.objects.filter(user = user , active=True)
+        tests = get_objects_for_user(user , ['view_test'] , active_test , accept_global_perms=True)
+        
+        serializer = TestSerializer(tests , many=True)
+        
+        return Response(data={"success" : True , "data" : serializer.data} , status=status.HTTP_200_OK)
+    
+    
+    def post(self , request) :
+        user = request.user
+        if not user.is_superuser :
+            return Response(data={"error" : 'user does not have permission to do this action'} , status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = TestSerializer(data=request.data)
+        
+        if serializer.is_valid() :
+            data = serializer.validated_data
+            data['user'] = user
+            kind = data['kind']
+            title = data['title']
+            # check that if there is active package with the same kind and name
+            active_test = Test.objects.filter(kind=kind , title=title , active=True)
+            if active_test.exists() :
+                return Response(data={"error" : "there is active test with this name and kind" , "fa_error" : "آزمونی با این نام و نوع وجود دارد"} , status=status.HTTP_400_BAD_REQUEST )
+            test = serializer.save() 
+            # assigning permission to the user
+            assign_perm("view_test" , user , test)
+            assign_perm("change_test" , user , test)
+            assign_perm("delete_test" , user , test)
+            return Response(data={"success" : True , "data" : serializer.data})    
+        return Response(data={"errors" : serializer.errors} , status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    def patch(self , request) :
+        user = request.user
+        if not user.is_superuser :
+            return Response(data={"error" : 'user does not have permission to do this action'} , status=status.HTTP_403_FORBIDDEN)
+
+        test_id = request.data.get('test_id')
+        if not test_id :
+            return Response(data={"error" : "test_id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+        
+        try :
+            test = Test.objects.get(pk=test_id , active=True)
+        except Test.DoesNotExist :
+            return Response(data={"error" : "test does not exists"} , status=status.HTTP_404_NOT_FOUND)  
+        
+        if user.has_perm("change_test" , test) :
+            return Response(data={"error" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN) 
+        
+        serializer = TestSerializer(test , data=request.data , partial=True)
+        if serializer.is_valid() :
+            serializer.validated_data['user'] = user
+            publish = serializer.validated_data['publish']
+            if publish == True :
+                can_publish = utils.can_publish(test)
+                if not can_publish :
+                     return Response(data={"error" : "the test can not be published due the count of question user entered"} , status=status.HTTP_400_BAD_REQUEST)
+            serializer.save()
+            return Response(data={"success" : True , "data" : serializer.data} ,  status=status.HTTP_200_OK)
+        return Response(data={"errors" : serializer.errors} , status=status.HTTP_400_BAD_REQUEST)            
+            
+    def delete(self , request) :
+        user = request.user
+        if not user.is_superuser :
+            return Response(data={"error" : 'user does not have permission to do this action'} , status=status.HTTP_403_FORBIDDEN)
+        
+        test_id = request.data.get('test_id')
+        if not test_id :
+            return Response(data={"error" : "test_id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+        # check if there active test exists or not
+        try :
+            test = Test.objects.get(pk=test_id , active=True)
+        except Test.DoesNotExist :
+            return Response(data={"error" : "test does not exists" , "fa_error" : "آزمونی با این اطلاعات وجود ندارد"} , status=status.HTTP_404_NOT_FOUND)
+        
+        if user.has_perm("delete_test" , test) :
+            return Response(data={"error" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
+        # virtual delete the test
+        test.deleted_at = datetime.datetime.now()
+        test.active = False
+        test.save()
+        return Response(data={"success" : True } , status=status.HTTP_200_OK)
+    
+    
+    
+    
+class ManageQuestion(APIView) :
+    # get list of test question
+    def get(self , request) :
+        user = request.user
+        test_id = request.data.get('test_id')
+        
+        if not test_id :
+            return Response(data={"error" : "test_id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+        
+        if not user.is_superuser :
+            return Response(data={"error" : 'user does not have permission to do this action'} , status=status.HTTP_403_FORBIDDEN)
+
+        active_qa = QuestionAndAnswers.objects.filter(test=test_id , active=True)
+    
+        qa = get_objects_for_user(user , ['view_questionandanswer'] , active_qa , accept_global_perms=True)
+        
+        # if not qa :
+        #     return Response(data={"data" : {}} , status=status)
+        
+        serializer = QuestionAndAnswersSerializer(qa , many=True)
+        return Response(data={"data" : serializer.data} , status=status.HTTP_200_OK)
+    
+    # add new question to the test
+    def post(self , request) :
+        user = request.user
+        if not user.is_superuser :
+            return Response(data={"error" : 'user does not have permission to do this action'} , status=status.HTTP_403_FORBIDDEN)
+        
+        test_id = request.data.get("test_id")
+        if not test_id :
+            return Response(data={"error" : "test_id must be entered" } , status=status.HTTP_400_BAD_REQUEST)
+            
+        try :
+            test = Test.objects.get(pk=test_id , active=True)
+        except Test.DoesNotExist :
+            return Response(data={"error" : "there is test with this data"  , "fa_error" : "آزمونی با این مشخصات وجود ندارد"} , status=status.HTTP_404_NOT_FOUND)
+        
+ 
+            
+        
+        
+        serializer = QuestionAndAnswersSerializer(data=request.data)
+        if serializer.is_valid() :
+            serializer.validated_data['test'] = test   
+            serializer.validated_data['user'] = user
+            question = serializer.validated_data['question']
+            
+            qa = QuestionAndAnswers.objects.filter(question=question  , active=True)
+            if qa.exists() :
+                return Response(data={"error" : "there is active question"}  , status=status.HTTP_400_BAD_REQUEST)
+
+            qa = serializer.save()
+
+            assign_perm("view_questionandanswers" , user , qa)
+            assign_perm("change_questionandanswers" , user , qa)
+            assign_perm("delete_questionandanswers" , user , qa)        
+            return Response(data={"success" : True , "data" : serializer.data})
+        return Response(data={"errors" :serializer.errors} , status=status.HTTP_400_BAD_REQUEST)
+        
+        
+        
+    
+    def patch(self , request) :
+        user = request.user
+        if not user.is_superuser :
+            return Response(data={"error" : 'user does not have permission to do this action'} , status=status.HTTP_403_FORBIDDEN)
+            
+        question_id = request.data.get("question_id")
+        
+        if not question_id :
+            return Response(data={"error" : "question_id must be entered" } , status=status.HTTP_400_BAD_REQUEST)
+
+        try :
+            qa = QuestionAndAnswers.objects.get(pk=question_id , active=True ,  )
+        except QuestionAndAnswers.DoesNotExist :
+            return Response(data={"error" : "there is question with this data"  , "fa_error" : "سوالی با این مشخصات وجود ندارد"} , status=status.HTTP_404_NOT_FOUND)
+    
+        if user.has_perm("change_questionandanswer" , qa) :
+            return Response(dat={"error" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
+
+        
+        
+        serializer = QuestionAndAnswersSerializer(qa , data=request.data , partial=True)
+        if serializer.is_valid :
+            serializer.validated_data['test'] = qa.test
+            serializer.save()
+
+            return Response(data={"success" : True} , status=status.HTTP_200_OK)
+        return Response(data={"errors" : serializer.errors} , status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    
+    def delete(self , request) :
+        user = request.user
+        if not user.is_superuser :
+            return Response(data={"error" : 'user does not have permission to do this action'} , status=status.HTTP_403_FORBIDDEN)
+            
+        question_id = request.data.get("question_id")
+        
+        if not question_id :
+            return Response(data={"error" : "question_id must be entered" } , status=status.HTTP_400_BAD_REQUEST)
+          
+        try :
+            qa = QuestionAndAnswers.objects.get(pk=question_id , active=True )
+        except QuestionAndAnswers.DoesNotExist :
+            return Response(data={"error" : "there is question with this data"  , "fa_error" : "سوالی با این مشخصات وجود ندارد"} , status=status.HTTP_404_NOT_FOUND)
+
+        if user.has_perm("delete_questionandanswer" , qa) :
+            return Response(dat={"error" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
+        
+        qa.deleted_at = datetime.datetime.now()
+        qa.active = False
+        qa.save()
+        return Response(data={"success" : True} , status=status.HTTP_200_OK)
+        
+        
+        
+        
+        

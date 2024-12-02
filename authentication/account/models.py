@@ -3,7 +3,9 @@ from django.core.validators import RegexValidator
 from django.db import models
 from django.contrib.auth.models import AbstractUser , BaseUserManager
 from pkg_resources import require
-
+# third party imports
+from guardian.shortcuts import assign_perm
+# local imports
 
 # Create your models here.
 
@@ -28,11 +30,12 @@ class UserManager(BaseUserManager) :
             raise ValueError("phone number must be provided")
         if not password :
             raise ValueError("password must be provided")
-
-
         user = self.create_user(phone=phone , password=password)
         user.is_superuser = True
         user.is_staff = True
+        # TODO add other model permission needed for admin 
+        assign_perm("job_seeker.view_test" , user)
+        assign_perm("job_seeker.view_questionandanswers" , user)
         user.save(using=self._db)
         return user
 

@@ -4,6 +4,15 @@ from django.contrib.auth import get_user_model
 from account.models import User
 
 # Create your models here.
+# mixin model for active , created at and delted at
+class TestStatusMixin(models.Model) :
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    deleted_at = models.DateTimeField(null=True , blank=True)
+
+    class Meta :
+        abstract = True
+    
 
 # specific information about the job seeker
 class JobSeeker(models.Model):
@@ -13,17 +22,47 @@ class JobSeeker(models.Model):
     birthday = models.DateField()
 
 
+
+
+
+class Test(TestStatusMixin) :
+    
+    class TestKind(models.TextChoices) :
+        PSYCHOLOGY = "psychology"
+        QUESTIONNAIRE = "questionnaire" 
+
+    
+    user = models.ForeignKey(User , on_delete=models.CASCADE , related_name="tests")
+    title = models.CharField(max_length=50 , null=False ,blank=False)
+    kind = models.CharField(choices=TestKind.choices)
+    publish = models.BooleanField(default=False)
+    count = models.IntegerField(default=10)
+ 
+    
+class QuestionAndAnswers(TestStatusMixin) :
+    test = models.ForeignKey(Test , on_delete=models.CASCADE , related_name="questions")
+    user = models.ForeignKey(User , on_delete=models.CASCADE , related_name="question_answers")
+    question = models.TextField(null=False)
+    answer = models.TextField(null=True , blank=True)
+    score = models.TextField(null=False , default=5)
+    
+
+    
+
+    
 # resume of the job seeker
 class Resume(models.Model) :
-    job_seeker = models.ForeignKey(JobSeeker , on_delete=models.CASCADE , related_name='resumes')
+    job_seeker = models.ForeignKey(JobSeeker , on_delete=models.CASCADE , related_name='resume')
     file = models.FileField(upload_to='resumes/' , null=True , blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     skills = models.JSONField(default=dict)
     experience = models.TextField(max_length=200)
     education = models.TextField(max_length=200)
-
-
+    test = models.ManyToManyField(Test , related_name="resume")
+    
+    
+    
     
 # job seeker apply for job
 class Application(models.Model) :
@@ -40,7 +79,4 @@ class Application(models.Model) :
     send_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(choices=ApplicationStatus , default=ApplicationStatus.SENT)
     description = models.TextField(null=True , blank=True)
-    
- 
-
     

@@ -831,6 +831,7 @@ class EmployerInterviewSchedule(APIView , InterviewScheduleMixin) :
         },
         security=[{"Bearer" : []}]
     )
+    
     def patch(self , request) :
         user = request.user
         
@@ -869,7 +870,7 @@ class EmployerInterviewSchedule(APIView , InterviewScheduleMixin) :
 
   
   
-    
+# TODO  add this to admin app    
 # for admins
 class ChangeJobOfferStatus(APIView) :
     @swagger_auto_schema(

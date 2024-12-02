@@ -2,7 +2,7 @@
 from rest_framework import serializers
 from rest_framework.parsers import MultiPartParser, FormParser
 # local imports
-from .models import JobSeeker , Resume , Application
+from .models import JobSeeker , Resume , Application , Test , QuestionAndAnswers
 from employer.models import InterviewSchedule
 
 
@@ -32,3 +32,35 @@ class ChangeInterviewJobSeekerScheduleSerializer(serializers.ModelSerializer) :
     class Meta :
         model = InterviewSchedule
         exclude = ['status' , 'employer_time']
+        
+        
+        
+class TestSerializer(serializers.ModelSerializer) :
+    
+    class Meta :
+        model = Test
+        exclude = ['user']
+        
+    def update(self , instance , validated_data) :
+        
+        restriced_fields = ['created_at' , 'deleted_at']
+        for field in restriced_fields :
+            if field in validated_data :
+                raise serializers.ValidationError({field : "this field can not be updated"})
+        return super().update(instance , validated_data)
+
+
+class QuestionAndAnswersSerializer(serializers.ModelSerializer) :
+    
+    class Meta :
+        model = QuestionAndAnswers
+        exclude = ['test' , 'user']
+    
+    
+    def update(self , instance , validated_data) :
+        
+        restriced_fields = ['created_at' , 'deleted_at']
+        for field in restriced_fields :
+            if field in validated_data :
+                raise serializers.ValidationError({field : "this field can not be updated"})
+        return super().update(instance , validated_data)

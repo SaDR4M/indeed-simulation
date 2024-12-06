@@ -13,6 +13,7 @@ from drf_yasg.utils import swagger_auto_schema
 from django.db import transaction
 from package.serializers import PackageSerializer
 from django.utils.timezone import make_aware , make_naive
+from rest_framework.pagination import LimitOffsetPagination
 # local imports
 from .serializers import (EmployerSerializer,
                           JobOpportunitySerializer,
@@ -663,9 +664,13 @@ class AllResumes(APIView) :
             return Response(data={"detail" : "Employer does not exists"} , status=HTTP_404_NOT_FOUND)
         
         resumes = Resume.objects.all()
+        # paginator 
+        paginator = LimitOffsetPagination()
+        paginator_resume = paginator.paginate_queryset(resumes , request)
+        
         if not resumes.exists() :
             return Response(data={"detail" : "there is no resume"} , status=HTTP_404_NOT_FOUND)
-        serializer = ResumeSerializer(resumes , many=True)
+        serializer = ResumeSerializer(paginator_resume , many=True)
         return Response(data={"data" : serializer.data} , status=HTTP_200_OK)  
     
     

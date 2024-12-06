@@ -211,13 +211,25 @@ class VerifyOtp(APIView) :
 
 
 
+from .models import Countries
+from rest_framework.pagination import LimitOffsetPagination
+from rest_framework import serializers
+
+class CounrtySerializer(serializers.ModelSerializer) :
+
+    class Meta :
+        model = Countries
+        fields = '__all__'
 
 class ShowData(APIView) :
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAuthenticated]
     def get(self, request):
-        return Response(data={"data": "Authorization"}, status=status.HTTP_200_OK)
+        countries = Countries.objects.all()
+        paginate = LimitOffsetPagination()
+        data = paginate.paginate_queryset(countries , request)
+        serializer = CounrtySerializer(data , many=True)
+        return Response(data={"data": serializer.data}, status=status.HTTP_200_OK)
 
 
 
 # the second login
-

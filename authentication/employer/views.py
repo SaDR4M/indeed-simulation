@@ -13,6 +13,7 @@ from drf_yasg.utils import swagger_auto_schema
 from django.db import transaction
 from package.serializers import PackageSerializer
 from django.utils.timezone import make_aware , make_naive
+from rest_framework.pagination import LimitOffsetPagination
 # local imports
 from .serializers import (EmployerSerializer,
                           JobOpportunitySerializer,
@@ -669,7 +670,7 @@ class AllResumes(APIView , FilterResumse) :
             return filtered_resume
         
         paginator = LimitOffsetPagination
-        paginator.paginate_queryset()
+        paginator.paginate_queryset(filtered_resume , request)
         
         serializer = GetResumeSerializer(filtered_resume , many=True)
         return Response(data={"data" : serializer.data} , status=HTTP_200_OK)  

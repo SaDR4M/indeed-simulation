@@ -2,7 +2,6 @@
 from django.core.validators import RegexValidator
 from django.db import models
 from django.contrib.auth.models import AbstractUser , BaseUserManager
-from pkg_resources import require
 # third party imports
 from guardian.shortcuts import assign_perm
 # local imports
@@ -48,7 +47,7 @@ class User(AbstractUser) :
 
     username = None
 
-    phone = models.CharField(max_length=15, unique=True, blank=True, null=False , validators=[phone_validator])
+    phone = models.CharField(max_length=15, unique=True, blank=True, null=True , validators=[phone_validator])
     email = models.EmailField(unique=True, blank=True, null=True)
     password = models.CharField(max_length=128, blank=True, null=True)
 
@@ -101,3 +100,38 @@ class Message(models.Model) :
     content = models.TextField(null=True , blank=True)
     message_id = models.CharField(null=True , blank=True)
     
+    
+# test
+
+class Countries(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+    iso3 = models.CharField(max_length=3, blank=True, null=True)
+    numeric_code = models.CharField(max_length=3, blank=True, null=True)
+    iso2 = models.CharField(max_length=2, blank=True, null=True)
+    phonecode = models.CharField(max_length=255, blank=True, null=True)
+    capital = models.CharField(max_length=255, blank=True, null=True)
+    currency = models.CharField(max_length=255, blank=True, null=True)
+    currency_name = models.CharField(max_length=255, blank=True, null=True)
+    currency_symbol = models.CharField(max_length=255, blank=True, null=True)
+    tld = models.CharField(max_length=255, blank=True, null=True)
+    native = models.CharField(max_length=255, blank=True, null=True)
+    # region = models.CharField(max_length=255, blank=True, null=True)
+    # region_0 = models.ForeignKey('Regions', models.DO_NOTHING, db_column='region_id', blank=True, null=True)  # Field renamed because of name conflict.
+    #subregion = models.CharField(max_length=255, blank=True, null=True)
+    #subregion_0 = models.ForeignKey('Subregions', models.DO_NOTHING, db_column='subregion_id', blank=True, null=True)  # Field renamed because of name conflict.
+    nationality = models.CharField(max_length=255, blank=True, null=True)
+    timezones = models.TextField(blank=True, null=True)
+    translations = models.TextField(blank=True, null=True)
+    latitude = models.DecimalField(max_digits=10, decimal_places=8, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=11, decimal_places=8, blank=True, null=True)
+    emoji = models.CharField(max_length=191, blank=True, null=True)
+    emojiu = models.CharField(db_column='emojiU', max_length=191, blank=True, null=True)  # Field name made lowercase.
+    created_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField()
+    flag = models.SmallIntegerField()
+    wikidataid = models.CharField(db_column='wikiDataId', max_length=255, blank=True, null=True, db_comment='Rapid API GeoDB Cities')  # Field name made lowercase.
+
+    class Meta:
+        managed = False
+        db_table = 'countries'

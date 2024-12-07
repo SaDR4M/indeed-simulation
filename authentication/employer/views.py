@@ -89,8 +89,9 @@ class EmployerRegister(APIView , CountryCityIdMixin) :
                 return data
             city = data['city']
             country = data['country']
+            state = data['state']
             # adding the user to the validated data
-            employer = serializer.save(user=user , city=city , country=country)
+            employer = serializer.save(user=user , city=city , country=country , state=state)
             # assign the permission to the user
             assign_perm('view_employer' , user , employer)
             assign_perm('delete_employer' , user , employer)
@@ -524,7 +525,8 @@ class JobOffer(APIView , CountryCityIdMixin) :
                 return data
             city = data['city']
             country = data['country']
-            offer = serializer.save(employer=employer , country=country, city=city)
+            state = data['state']
+            offer = serializer.save(employer=employer , country=country, city=city , state=state)
             purchased_packages.remaining -= 1
             purchased_packages.save()
             message = Message.objects.create(type="expire" , kind="email" , email=user.email)

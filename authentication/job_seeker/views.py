@@ -74,7 +74,8 @@ class JobSeekerRegister(APIView , CountryCityIdMixin) :
                 return data
             city = country_data['city']
             country = country_data['country']
-            job_seeker = serializer.save(city=city , country=country)
+            state = country_data['state']
+            job_seeker = serializer.save(city=city , country=country , state=state)
             # assign base permission
             utils.assign_base_permissions(user, job_seeker, "jobseeker")
             return Response(data={"detail" : "Job Seeker registered successfully"}, status=status.HTTP_201_CREATED)

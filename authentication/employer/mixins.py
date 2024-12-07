@@ -11,7 +11,7 @@ from employer.utils import employer_exists
 from job_seeker.utils import job_seeker_exists
 from job_seeker.serializers import GetResumeSerializer
 from job_seeker.models import Resume
-from account.models import Cities , Countries
+from account.models import Cities , Countries , States
 
 
 class InterviewScheduleMixin:
@@ -92,6 +92,11 @@ class CountryCityIdMixin:
         city = request.data.get('city') 
         if not city :
             return Response(data={"error" : "city must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+        
+        state = request.data.get('state') 
+        if not state :
+            return Response(data={"error" : "state must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+        
         country = request.data.get('country')
         if not country :
             return Response(data={"error" : "country must be entered"} , status=status.HTTP_400_BAD_REQUEST)
@@ -104,7 +109,14 @@ class CountryCityIdMixin:
             return Response(data={"error" : "country does not exists"} , status=status.HTTP_404_NOT_FOUND)
         
         try :
-            city = Cities.objects.get(country=country , name__iexact=city.lower())
+            state = States.objects.get(country=country , name__iexact=state.lower())
+            data['state'] = state
+        except States.DoesNotExist :
+            return Response(data={"error" : "state does not exists"} , status=status.HTTP_404_NOT_FOUND)
+        
+        
+        try :
+            city = Cities.objects.get(country=country , state=state ,  name__iexact=city.lower())
             data['city'] = city
         except Cities.DoesNotExist :
             return Response(data={"error" : "city does not exists"} , status=status.HTTP_400_BAD_REQUEST)

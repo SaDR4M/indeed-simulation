@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 import datetime
 # local import
-from account.models import User , Cities , Countries
+from account.models import User , Cities , Countries , States
 # Create your models here.
 
 # extra information about the employer
@@ -15,8 +15,9 @@ class Employer(models.Model):
     address = models.CharField(max_length=250)
     id_number = models.CharField(max_length=25)
     postal_code = models.CharField(max_length=25)
-    country = models.ForeignKey(Countries , related_name="employers" , on_delete=models.CASCADE)
-    city = models.ForeignKey(Cities , related_name="employers" , on_delete=models.CASCADE)
+    country = models.ForeignKey(Countries , related_name="country_employers" , on_delete=models.CASCADE)
+    state = models.ForeignKey(States , related_name="state_employers" , on_delete=models.CASCADE)
+    city = models.ForeignKey(Cities , related_name="city_emoployers" , on_delete=models.CASCADE)
 
     
 # opportunity that employer makes
@@ -36,6 +37,7 @@ class JobOpportunity(models.Model):
     status = models.CharField(choices=OfferStatus , default=OfferStatus.REGISTRED)
     created_at = models.DateTimeField(auto_now_add=True)
     country = models.ForeignKey(Countries , related_name="job_offers" , on_delete=models.CASCADE)
+    state = models.ForeignKey(States , related_name="job_states" , on_delete=models.CASCADE)
     city = models.ForeignKey(Cities , related_name="job_offers" , on_delete=models.CASCADE)
     # i changed the data type of this column manually in the DB
     expire_at = models.DateTimeField()

@@ -11,13 +11,13 @@ from job_seeker.models import Resume , Application
 class EmployerSerializer(serializers.ModelSerializer) :
     class Meta :
         model = Employer
-        exclude = ['user']
+        exclude = ['user' , 'country' , 'city']
 
 class JobOpportunitySerializer(serializers.ModelSerializer) :
     # package_purchase_id = serializers.PrimaryKeyRelatedField(queryset=PurchasedPackage.objects.all())
     class Meta :
         model = JobOpportunity
-        exclude = ['employer']
+        exclude = ['employer' , 'country' , 'city']
     
 
     def validate(self , attrs) :

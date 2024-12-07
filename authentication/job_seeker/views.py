@@ -18,10 +18,10 @@ from . import utils
 from .serializers import ChangeInterviewJobSeekerScheduleSerializer
 from employer.serializers import InterviewScheduleSerializer
 from employer.models import InterviewSchedule    
-from employer.mixins import InterviewScheduleMixin
+from employer.mixins import InterviewScheduleMixin , CountryCityIdMixin
 # Create your views here.
 
-class JobSeekerRegister(APIView) :
+class JobSeekerRegister(APIView , CountryCityIdMixin) :
     @swagger_auto_schema(
         operation_summary="get the current job seeker data",
         operation_description="get the current job seeker data if the job seeker exists",
@@ -68,7 +68,13 @@ class JobSeekerRegister(APIView) :
         if serializer.is_valid():
             data = serializer.validated_data
             data['user'] = user
-            job_seeker = serializer.save()
+            # adding the city and country
+            country_data = self.country_and_city_id(request)
+            if isinstance(data , Response):
+                return data
+            city = country_data['city']
+            country = country_data['country']
+            job_seeker = serializer.save(city=city , country=country)
             # assign base permission
             utils.assign_base_permissions(user, job_seeker, "jobseeker")
             return Response(data={"detail" : "Job Seeker registered successfully"}, status=status.HTTP_201_CREATED)

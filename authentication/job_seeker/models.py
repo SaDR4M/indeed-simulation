@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 # local import
-from account.models import User
+from account.models import User , Countries ,Cities
 
 # Create your models here.
 # mixin model for active , created at and delted at
@@ -20,6 +20,8 @@ class JobSeeker(models.Model):
     bio = models.TextField(blank=True , null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     birthday = models.DateField()
+    country = models.ForeignKey(Countries , related_name="jobseekers" , on_delete=models.CASCADE)
+    city = models.ForeignKey(Cities , related_name="jobseekers" , on_delete=models.CASCADE)
 
 
 
@@ -49,7 +51,7 @@ class QuestionAndAnswers(TestStatusMixin) :
 
     
 
-    
+# TODO add state to it
 # resume of the job seeker
 class Resume(models.Model) :
     

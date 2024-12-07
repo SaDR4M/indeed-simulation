@@ -1,4 +1,5 @@
-from django.urls import path
+from django.urls import path , re_path
+# from . import consumers
 # local imports
 from . import views
 urlpatterns = [
@@ -7,3 +8,6 @@ urlpatterns = [
     # path('request/', views.send_request, name='request'),
     # path('verify/', views.verify, name='verify'),
 ]
+# websocket_urlpatterns = [
+#     re_path(r"ws/notifications/$", consumers.NotificationConsumer.as_asgi()),
+# ]

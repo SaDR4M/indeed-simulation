@@ -3,21 +3,24 @@ from django.db import models
 from django.contrib.auth import get_user_model
 import datetime
 # local import
-from account.models import User
+from account.models import User , Cities , Countries
 # Create your models here.
 
 # extra information about the employer
+# TODO add state to it
 class Employer(models.Model):
 
     user = models.OneToOneField(User, on_delete=models.CASCADE , related_name="employer")
     name = models.CharField(max_length=100)
     address = models.CharField(max_length=250)
-    city = models.CharField(max_length=100)
     id_number = models.CharField(max_length=25)
     postal_code = models.CharField(max_length=25)
-    
+    country = models.ForeignKey(Countries , related_name="employers" , on_delete=models.CASCADE)
+    city = models.ForeignKey(Cities , related_name="employers" , on_delete=models.CASCADE)
+
     
 # opportunity that employer makes
+# TODO add state to it
 class JobOpportunity(models.Model):
         
     class OfferStatus(models.TextChoices) :
@@ -32,6 +35,8 @@ class JobOpportunity(models.Model):
     description = models.TextField(max_length=500)
     status = models.CharField(choices=OfferStatus , default=OfferStatus.REGISTRED)
     created_at = models.DateTimeField(auto_now_add=True)
+    country = models.ForeignKey(Countries , related_name="job_offers" , on_delete=models.CASCADE)
+    city = models.ForeignKey(Cities , related_name="job_offers" , on_delete=models.CASCADE)
     # i changed the data type of this column manually in the DB
     expire_at = models.DateTimeField()
 

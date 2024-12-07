@@ -5,6 +5,7 @@ from datetime import datetime
 from employer.models import Employer , EmployerOrder
 from package.models import PurchasedPackage
 
+
 # can not make job opportunity if they do not have any packages
 def can_create_offer(employer , priority) :
     purchased = PurchasedPackage.objects.filter(employer=employer , package__type="offer"  , package__priority=priority,  active=True).order_by('bought_at')
@@ -49,3 +50,4 @@ def create_random_number() :
     if payment.exists() :
         create_random_number()
     return number
+

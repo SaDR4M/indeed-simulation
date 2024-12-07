@@ -35,6 +35,9 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+# ASGI
+ASGI_APPLICATION = "authentication.asgi.application"
+
 ALLOWED_HOSTS = [
     '127.0.0.1',
 ]
@@ -58,6 +61,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'guardian',
     'celery',
+    # 'channels'
     # 'django_elasticsearch_dsl',
 
 
@@ -139,17 +143,10 @@ AUTH_PASSWORD_VALIDATORS = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-<<<<<<< HEAD
     ),  
     'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    # 'PAGE_SIZE': 2, 
-=======
-    ),
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 10
->>>>>>> 77f792d4f788624cef8611d1a83220f62819cf23
 }
 # django rest framework jwt setting
 SIMPLE_JWT = {

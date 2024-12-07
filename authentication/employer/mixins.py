@@ -11,7 +11,7 @@ from employer.utils import employer_exists
 from job_seeker.utils import job_seeker_exists
 from job_seeker.serializers import GetResumeSerializer
 from job_seeker.models import Resume
-
+from account.models import Cities , Countries
 
 
 class InterviewScheduleMixin:
@@ -83,76 +83,86 @@ class InterviewScheduleMixin:
                return Response(data={"error" : "conflict with job seeker time" , "fa_error" : "کارجو در زمان داده شده مصاحبه ای دارد"}, status=status.HTTP_400_BAD_REQUEST)
             if kind == "job_seeker" : 
              return Response(data={"error" : "conflict with its own time" , "fa_error" : "شما مصحاحبه ای با تایم داده شده دارید"} , status=status.HTTP_400_BAD_REQUEST)
-         
-         
-         
-class FilterResumse:
-    # def filter_stack(self , resume , stack) :
-    #     filtered_resume = resume.object.filter(stack=stack)
-    #     serializer = GetResumeSerializer(filtered_resume , many=True)
-    #     return serializer
+   
+   
+class CountryCityIdMixin:
+    
+    def country_and_city_id(self , request) :
         
-    
-    # def filter_education(self , resume , education):
-    #     filtered_resume = resume.object.filter(stack=stack)
-    #     serializer = GetResumeSerializer(filtered_resume , many=True)
-    #     return serializer
-    
-    # def filter_exprience(self , resume , exprience):
-    #     filtered_resume = resume.object.filter(stack=stack)
-    #     serializer = GetResumeSerializer(filtered_resume , many=True)
-    #     return serializer
-    
-    def filter_resume(self , request) :
-               # for filtering the data
-        stack = request.GET.get('stack')
-        education = request.GET.get('education')
-        experience = request.GET.get('experience')
-        test = request.GET.get('test')
-        skills = request.GET.get('skills')
+        city = request.data.get('city') 
+        if not city :
+            return Response(data={"error" : "city must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+        country = request.data.get('country')
+        if not country :
+            return Response(data={"error" : "country must be entered"} , status=status.HTTP_400_BAD_REQUEST)
         
-        # check stack and education choices
-        if education :
-            education_choices = dict(Resume.EducationChoices.choices)
-            if education not in education_choices :
-                return Response(data={"error" : "education is not valid"} , status=status.HTTP_400_BAD_REQUEST)
-        if stack :
-            stack_choices = dict(Resume.StackChoices.choices)
-            if stack not in stack_choices :
-                return Response(data={"error" : "stack is not valid"} , status=status.HTTP_400_BAD_REQUEST)
-        # filter resume base on user paramters
-        resumes = Resume.objects.all()
-        if not resumes.exists() :
-            return Response(data={"detail" : "there is no resume"} , status=status.HTTP_404_NOT_FOUND)
+        data = {}
+        try :
+            country = Countries.objects.get(name__iexact=country.lower())
+            data['country'] = country
+        except Countries.DoesNotExist :
+            return Response(data={"error" : "country does not exists"} , status=status.HTTP_404_NOT_FOUND)
+        
+        try :
+            city = Cities.objects.get(country=country , name__iexact=city.lower())
+            data['city'] = city
+        except Cities.DoesNotExist :
+            return Response(data={"error" : "city does not exists"} , status=status.HTTP_400_BAD_REQUEST)
+        
+        return data
+       
+   
+   
+         
+         
+         
+class FilterResumseMixin:
+    
+    def filter_resume(self) :
+        # for filtering the data
+        allowed_filters_dict = {
+            "job_seeker_id": {"model_field": "job_seeker", "lookup": "exact"},
+            "experience_min": {"model_field": "experience", "lookup": "gte"},
+            "experience_max": {"model_field": "experience", "lookup": "lte"},
+            "education": {"model_field": "education", "lookup": "exact"},
+            "stack": {"model_field": "stack", "lookup": "exact"},
+            "updated_last_month": {"model_field": "updated_at", "lookup": "lte"},
+            "updated_last_year": {"model_field": "updated_at", "lookup": "lte"},
+            "skills": {"model_field": "skills", "lookup": "contains"},
+            "country": {"model_field": "job_seeker__country__name", "lookup": "iexact"},
+            "city": {"model_field": "job_seeker__city__name", "lookup": "iexact"},
+        }
 
-        # using Q to apply multiple filter base on the AND 
-        # =& its the AND for query = Q(stack="front_end") & Q(education="bachelor")
-        # it will be just of single query
+         
+        resumes = Resume.objects.all()
         query = Q()
-        if stack :
-            query &= Q(stack=stack)
-        # check education be in list of educations
-        if education :
-            query &= Q(education=education)
-        # 0 is considered as None
-        if experience is not None :
-            query &= Q(experience__gte=experience)
-        # base on the available test
-        # list of test id's
-        # print(ast.literal_eval(f"{skills}"))
-        if test :
-            query &= Q(test__in=test)
-        # filter base on the skills
-        # convert the skill to dict if it is not json
-        if skills :
-            skills = json.loads(skills)
-            for key,value in skills.items() :
-                query &= Q(skills__contains={key.lower(): value.lower()})       
-            # if isinstance(skills , str) :
-                    # skills = ast.literal_eval(f"{skills}")
-                  
+        or_query = Q()
+        parameters = self.request.query_params
+        for parameter in parameters : 
+            filter_match = allowed_filters_dict.get(parameter)
+            if filter_match:
+                value = self.request.query_params.get(parameter)
+                values = value.split(',')    
+                # if len(values) > 1 and parameter in ['skills ' , 'education' , 'stack'] :  
+                if parameter in ['skills' , 'education' , 'stack'] :
+                    try :
+                        if parameter == "skills" :
+                            skills = json.loads(value)
+                            for key,value in skills.items() :
+                                field = f"{filter_match['model_field']}__{filter_match['lookup']}"
+                                query |= Q(**{field : {key.lower(): value.lower()}})
+                    except :
+                        return Response(data={"error" : "error occured for the skills"} , status=status.HTTP_400_BAD_REQUEST)
+                    else :
+                        for value in values : 
+                            field = f"{filter_match['model_field']}"
+                            or_query |=  Q(**{field : value}) 
+                else :
+                    field = (f"{filter_match['model_field']}__{filter_match['lookup']}")
+                    query &= Q(**{field : value})
+            else :
+                return Response(data={"error" : f"{parameter} is not valid"} , status=status.HTTP_400_BAD_REQUEST)
+        query &= or_query
         resume = resumes.filter(query)
         return resume
         
-    
-    

@@ -32,7 +32,8 @@ from package.models import PurchasedPackage, Package
 from .utils import can_create_offer, employer_exists
 from celery.result import AsyncResult
 from job_seeker.utils import job_seeker_exists
-from .mixins import InterviewScheduleMixin , FilterResumse
+from .mixins import InterviewScheduleMixin , FilterResumseMixin , CountryCityIdMixin
+from django.db.models import Q
 from rest_framework.pagination import LimitOffsetPagination
 # sms
 from account.tasks import send_order_sms , send_order_email
@@ -40,7 +41,7 @@ from account.models import Message
 from . import tasks
 # Create your views here.
 
-class EmployerRegister(APIView) :
+class EmployerRegister(APIView , CountryCityIdMixin) :
     @swagger_auto_schema(
     operation_summary="get employer infomartion",
     operation_description="get the employer information if the user is employer",
@@ -77,12 +78,19 @@ class EmployerRegister(APIView) :
         # check if the employer exist or not
         user = request.user
         employer = Employer.objects.filter(user=request.user)
+
         if employer.exists() :
             return Response(data={"detail" : "Employer exists"} , status=HTTP_400_BAD_REQUEST)
         serializer = EmployerSerializer(data=request.data)
         if serializer.is_valid() :
+
+            data = self.country_and_city_id(request)
+            if isinstance(data , Response):
+                return data
+            city = data['city']
+            country = data['country']
             # adding the user to the validated data
-            employer = serializer.save(user=user)
+            employer = serializer.save(user=user , city=city , country=country)
             # assign the permission to the user
             assign_perm('view_employer' , user , employer)
             assign_perm('delete_employer' , user , employer)
@@ -445,7 +453,7 @@ class OrderItem(APIView) :
 
     
     
-class JobOffer(APIView) :
+class JobOffer(APIView , CountryCityIdMixin) :
     
     @swagger_auto_schema(
         operation_summary="job opportunities that user has made",
@@ -510,7 +518,13 @@ class JobOffer(APIView) :
         # save the date
         serializer = JobOpportunitySerializer(data=request.data)
         if serializer.is_valid() :
-            offer = serializer.save(employer=employer)
+            # adding city and country
+            data = self.country_and_city_id(request)
+            if isinstance(data , Response):
+                return data
+            city = data['city']
+            country = data['country']
+            offer = serializer.save(employer=employer , country=country, city=city)
             purchased_packages.remaining -= 1
             purchased_packages.save()
             message = Message.objects.create(type="expire" , kind="email" , email=user.email)
@@ -646,7 +660,7 @@ class ResumesForOffer(APIView) :
         return Response(data={"data" : serializer.data} ,status=HTTP_200_OK)
     
 
-class AllResumes(APIView , FilterResumse) : 
+class AllResumes(APIView , FilterResumseMixin) : 
     @swagger_auto_schema(
         operation_summary="view all the available resume",
         operation_description="view the all the available resume don't matter they sent it to employer or not",
@@ -664,12 +678,15 @@ class AllResumes(APIView , FilterResumse) :
         employer = utils.employer_exists(user)
         if not employer :
             return Response(data={"detail" : "Employer does not exists"} , status=HTTP_404_NOT_FOUND)
-
-        filtered_resume = self.filter_resume(request)
+    
+        filtered_resume = self.filter_resume()
         if isinstance(filtered_resume , Response) :
             return filtered_resume
-        
-        paginator = LimitOffsetPagination
+                     
+    
+            
+
+        paginator = LimitOffsetPagination()
         paginator.paginate_queryset(filtered_resume , request)
         
         serializer = GetResumeSerializer(filtered_resume , many=True)

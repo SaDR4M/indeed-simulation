@@ -52,13 +52,33 @@ class QuestionAndAnswers(TestStatusMixin) :
     
 # resume of the job seeker
 class Resume(models.Model) :
+    
+    class EducationChoices(models.TextChoices) :
+        UNDER_DIPLOMA = "under_diploma" 
+        BACHELOR = "bachelor"
+        DIPLOMA = "diploma"
+        MASTER =  "master"
+        PHD = "phd"
+        
+        
+    class StackChoices(models.TextChoices) :
+        FRONT_END = "front_end"  
+        BACK_END = "back_end"
+        FULL_STACK = "full_stack"
+        WORDPRESS = "wordpress"
+        GRAPHIC_DESIGNER = "graphic_designer"
+        SEO = "seo"
+        
+        
+        
     job_seeker = models.ForeignKey(JobSeeker , on_delete=models.CASCADE , related_name='resume')
     file = models.FileField(upload_to='resumes/' , null=True , blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    skills = models.JSONField(default=dict)
-    experience = models.TextField(max_length=200)
-    education = models.TextField(max_length=200)
+    skills = models.JSONField(default=dict , null=True)
+    experience = models.IntegerField()
+    education = models.CharField(choices=EducationChoices)
+    stack = models.CharField(choices=StackChoices)
     test = models.ManyToManyField(Test , related_name="resume")
     
     

@@ -17,8 +17,13 @@ class ResumeSerializer(serializers.ModelSerializer):
     file = serializers.FileField(required=False)
     class Meta :
         model = Resume
-        exclude = ['job_seeker']
+        exclude = ['job_seeker' , 'test']
         # fields = "__all__"
+class GetResumeSerializer(serializers.ModelSerializer) :
+    class Meta :
+        model = Resume
+        fields = '__all__'
+
 
 class ApplicationSerializer(serializers.ModelSerializer):
     id = serializers.CharField(required=True)

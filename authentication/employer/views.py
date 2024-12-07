@@ -26,12 +26,13 @@ from .models import Employer, JobOpportunity, ViewedResume , EmployerCart , Empl
 from job_seeker.utils import assign_base_permissions
 from . import utils
 from job_seeker.models import Resume , Application
-from job_seeker.serializers import ApplicationSerializer, ResumeSerializer
+from job_seeker.serializers import ApplicationSerializer, ResumeSerializer , GetResumeSerializer
 from package.models import PurchasedPackage, Package
 from .utils import can_create_offer, employer_exists
 from celery.result import AsyncResult
 from job_seeker.utils import job_seeker_exists
-from .mixins import InterviewScheduleMixin
+from .mixins import InterviewScheduleMixin , FilterResumse
+from rest_framework.pagination import LimitOffsetPagination
 # sms
 from account.tasks import send_order_sms , send_order_email
 from account.models import Message
@@ -644,7 +645,7 @@ class ResumesForOffer(APIView) :
         return Response(data={"data" : serializer.data} ,status=HTTP_200_OK)
     
 
-class AllResumes(APIView) : 
+class AllResumes(APIView , FilterResumse) : 
     @swagger_auto_schema(
         operation_summary="view all the available resume",
         operation_description="view the all the available resume don't matter they sent it to employer or not",
@@ -656,16 +657,21 @@ class AllResumes(APIView) :
         },
         security=[{"Bearer" : []}]
     )
-    def get(self , request) : 
+    def get(self , request) :  
+        
         user = request.user
         employer = utils.employer_exists(user)
         if not employer :
             return Response(data={"detail" : "Employer does not exists"} , status=HTTP_404_NOT_FOUND)
+
+        filtered_resume = self.filter_resume(request)
+        if isinstance(filtered_resume , Response) :
+            return filtered_resume
         
-        resumes = Resume.objects.all()
-        if not resumes.exists() :
-            return Response(data={"detail" : "there is no resume"} , status=HTTP_404_NOT_FOUND)
-        serializer = ResumeSerializer(resumes , many=True)
+        paginator = LimitOffsetPagination
+        paginator.paginate_queryset()
+        
+        serializer = GetResumeSerializer(filtered_resume , many=True)
         return Response(data={"data" : serializer.data} , status=HTTP_200_OK)  
     
     

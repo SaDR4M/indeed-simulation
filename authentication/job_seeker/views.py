@@ -12,7 +12,7 @@ from drf_yasg.utils import swagger_auto_schema
 # local imports
 from employer.models import JobOpportunity
 from .models import JobSeeker, Resume , Application , Test , QuestionAndAnswers
-from .serializers import JobSeekerSerializer, ResumeSerializer , ApplicationSerializer , TestSerializer , QuestionAndAnswersSerializer
+from .serializers import JobSeekerSerializer, ResumeSerializer , ApplicationSerializer , TestSerializer , QuestionAndAnswersSerializer , GetResumeSerializer
 from account.models import User
 from . import utils
 from .serializers import ChangeInterviewJobSeekerScheduleSerializer
@@ -95,7 +95,7 @@ class JobSeekerRegister(APIView) :
         if not user.has_perm('change_job_seeker' , job_seeker) :
             return Response(data={"detail" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
 
-        serializer = JobSeekerSerializer(JobSeeker , data=request.data , partial=True)
+        serializer = JobSeekerSerializer(job_seeker , data=request.data , partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(data={"detail" : "job seeker updated successfully"}, status=status.HTTP_200_OK)
@@ -128,8 +128,7 @@ class ResumeRegister(APIView) :
         # have permission to view the resume
         if not user.has_perm('view_resume' , resume) :
             return Response(data={"detail" : "user does not have permission to view this resume"} , status=status.HTTP_403_FORBIDDEN)
-
-        serializer = ResumeSerializer(resume, many=True)
+        serializer = GetResumeSerializer(resume)
         return Response(data={"detail" : serializer.data}, status=status.HTTP_200_OK)
     
     

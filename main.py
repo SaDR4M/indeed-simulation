@@ -1,17 +1,17 @@
-from elasticsearch import Elasticsearch
+# from elasticsearch import Elasticsearch
 
-client = Elasticsearch("http://127.0.0.1:9200/" , basic_auth=("elastic" , "13832004"))
+# client = Elasticsearch("http://127.0.0.1:9200/" , basic_auth=("elastic" , "13832004"))
 
-mappings = {
-    "properties" : {
-            "title" : {"type" : "keyword"},
-            "price" : {"type" : "integer"},
-            "category" : {"type" : "text"},    
-            "added_at" : {"type" : "date"}        
-    } 
-}
+# mappings = {
+#     "properties" : {
+#             "title" : {"type" : "keyword"},
+#             "price" : {"type" : "integer"},
+#             "category" : {"type" : "text"},    
+#             "added_at" : {"type" : "date"}        
+#     } 
+# }
 
-client.indices.delete(index = "my_index")
+# client.indices.delete(index = "my_index")
 # client.indices.create(index="my_index" , mappings=mappings)
 # doc_1 = client.index(index="my_index" , document={"title" : "lotr" , "price" : 25000 , "category" : "book"})
 # doc_2 = client.index(index="my_index" , document={"title" : "harry potter" , "price" : 50000 , "category" : "book"})

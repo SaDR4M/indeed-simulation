@@ -16,11 +16,12 @@ from django.utils.timezone import make_aware , make_naive
 from rest_framework.pagination import LimitOffsetPagination
 # local imports
 from .serializers import (EmployerSerializer,
+                          GetEmployerSerializer,
                           JobOpportunitySerializer,
                           ViewedResumeSerializer,
                           ChangeApllyStatusSerializer,
                           CartSerializer,
-                          CartItemSerializer, OrderSerializer, OrderItemSerializer, ChangeInterviewEmployerScheduleSerializer , InterviewScheduleSerializer
+                          CartItemSerializer, OrderSerializer, OrderItemSerializer, ChangeInterviewEmployerScheduleSerializer , InterviewScheduleSerializer,
                           )
                           
 from .models import Employer, JobOpportunity, ViewedResume , EmployerCart , EmployerCartItem , EmployerOrderItem , EmployerOrder , InterviewSchedule
@@ -32,7 +33,7 @@ from package.models import PurchasedPackage, Package
 from .utils import can_create_offer, employer_exists
 from celery.result import AsyncResult
 from job_seeker.utils import job_seeker_exists
-from .mixins import InterviewScheduleMixin , FilterResumseMixin , CountryCityIdMixin
+from .mixins import InterviewScheduleMixin , FilterResumeMixin , CountryCityIdMixin , FilterEmployerMixin
 from django.db.models import Q
 from rest_framework.pagination import LimitOffsetPagination
 # sms
@@ -662,13 +663,39 @@ class ResumesForOffer(APIView) :
         return Response(data={"data" : serializer.data} ,status=HTTP_200_OK)
     
 
-class AllResumes(APIView , FilterResumseMixin) : 
+class AllResumes(APIView , FilterResumeMixin) : 
     @swagger_auto_schema(
         operation_summary="view all the available resume",
         operation_description="view the all the available resume don't matter they sent it to employer or not",
+        manual_parameters=[
+            openapi.Parameter(
+                'experience_min', openapi.IN_QUERY, description="Minimum years of experience", type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'experience_max', openapi.IN_QUERY, description="Maximum years of experience", type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'age', openapi.IN_QUERY, description="Age range (min_age,max_age)", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'skills', openapi.IN_QUERY, description="Skills to filter by (JSON format)", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'gender', openapi.IN_QUERY, description="Gender (exact match)", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'city', openapi.IN_QUERY, description="City to filter by (exact match)", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'state', openapi.IN_QUERY, description="State to filter by (exact match)", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'country', openapi.IN_QUERY, description="Country to filter by (exact match)", type=openapi.TYPE_STRING
+            ),
+        ],
         # request_body=,
         responses={
-            200 : ResumeSerializer,
+            200 : GetResumeSerializer,
             400 : "invalid parameters",
             404 : "employer/offer was not found",
         },
@@ -967,3 +994,18 @@ class ChangePackagePrice(APIView) :
             serializer.save(user=user , active=True)
             return Response(data={"detail" : "success"} , status=HTTP_200_OK)
         return Response(data={"success" : False , "errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
+    
+    
+class AllEmployers(APIView , FilterEmployerMixin) :
+    def get(self , request) :
+        print('test')
+        user = request.user
+        if not user.is_superuser :
+            return Response(data={"error" : "User does not have permission to do this action"}  , status=HTTP_403_FORBIDDEN)
+        
+        employer = self.filter_employer()
+        print(employer)
+        if isinstance(employer , Response) :
+            return employer
+        serializer = GetEmployerSerializer(employer , many=True)
+        return Response(data={"data" : serializer.data} , status=HTTP_200_OK)

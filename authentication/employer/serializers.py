@@ -12,6 +12,12 @@ class EmployerSerializer(serializers.ModelSerializer) :
     class Meta :
         model = Employer
         exclude = ['user' , 'country' , 'state', 'city']
+        
+class GetEmployerSerializer(serializers.ModelSerializer) :
+    class Meta :
+        model = Employer
+        fields = '__all__'
+
 
 class JobOpportunitySerializer(serializers.ModelSerializer) :
     # package_purchase_id = serializers.PrimaryKeyRelatedField(queryset=PurchasedPackage.objects.all())

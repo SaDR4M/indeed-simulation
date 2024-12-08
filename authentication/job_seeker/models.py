@@ -2,8 +2,11 @@ from django.db import models
 from django.contrib.auth import get_user_model
 # local import
 from account.models import User , Countries ,Cities , States
-
+from common.mixin import GenderFilterMixin
 # Create your models here.
+
+
+
 # mixin model for active , created at and delted at
 class TestStatusMixin(models.Model) :
     active = models.BooleanField(default=True)
@@ -12,10 +15,12 @@ class TestStatusMixin(models.Model) :
 
     class Meta :
         abstract = True
+
     
 
 # specific information about the job seeker
-class JobSeeker(models.Model):
+class JobSeeker(GenderFilterMixin):
+    
     user = models.OneToOneField(User, on_delete=models.CASCADE , related_name='job_seeker')
     bio = models.TextField(blank=True , null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -23,6 +28,7 @@ class JobSeeker(models.Model):
     country = models.ForeignKey(Countries , related_name="city_jobseekers" , on_delete=models.CASCADE)
     state = models.ForeignKey(States , related_name="state_jobseekers" , on_delete=models.CASCADE)
     city = models.ForeignKey(Cities , related_name="city_jobseekers" , on_delete=models.CASCADE)
+   
 
 
 
@@ -47,7 +53,7 @@ class QuestionAndAnswers(TestStatusMixin) :
     user = models.ForeignKey(User , on_delete=models.CASCADE , related_name="question_answers")
     question = models.TextField(null=False)
     answer = models.TextField(null=True , blank=True)
-    score = models.TextField(null=False , default=5)
+    score = models.TextField(null=False , default=5)        
     
 
     

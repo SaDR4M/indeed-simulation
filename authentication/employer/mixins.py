@@ -1,17 +1,21 @@
 import ast
 import json
+from datetime import datetime , timedelta   
+from dateutil.relativedelta import relativedelta
 # third part imports
 from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Q
+from django.db import models
 # local
 from job_seeker.models import Application 
-from employer.models import InterviewSchedule
+from employer.models import InterviewSchedule , Employer
 from employer.utils import employer_exists
 from job_seeker.utils import job_seeker_exists
 from job_seeker.serializers import GetResumeSerializer
 from job_seeker.models import Resume
 from account.models import Cities , Countries , States
+
 
 
 class InterviewScheduleMixin:
@@ -64,7 +68,6 @@ class InterviewScheduleMixin:
         
     def check_conflict(self , interview_pk , time, apply , kind ) :
             
-        print(interview_pk)
         # employer conflict with its own time
         employer_conflict = InterviewSchedule.objects.filter(apply__job_opportunity__employer = apply.job_opportunity.employer , apply__status="interview").exclude(pk=interview_pk).filter(employer_time__in = [time])
             
@@ -127,54 +130,103 @@ class CountryCityIdMixin:
    
          
          
-         
-class FilterResumseMixin:
+
+
+class FilterResumeMixin:
+    def get_date_range_query(self, field, days):
+        today = datetime.now()
+        if int(days) > 365:
+            raise ValueError("Days cannot exceed 365.")
+        last_date = today - timedelta(days=days)
+        return Q(**{f"{field}__range": [last_date, today]})
     
-    def filter_resume(self) :
-        # for filtering the data
+    def get_age_range_query(self , field , min_age , max_age) :
+        print(min_age , max_age)
+        today = datetime.now().date()
+        if max_age > 100 or min_age < 10:
+            raise ValueError("age cannot be less than 10 or more than 100")
+        max_birthday_date = today - relativedelta(years=int(max_age))
+        min_birthday_date = today - relativedelta(years=int(min_age))
+        print(type(max_birthday_date) , min_birthday_date)
+        return Q(**{f"{field}__range": [max_birthday_date , min_birthday_date ]})
+    
+    
+    
+    def filter_resume(self):
+        
+        """list of filters that are allowed"""
         allowed_filters_dict = {
-            "job_seeker_id": {"model_field": "job_seeker", "lookup": "exact"},
             "experience_min": {"model_field": "experience", "lookup": "gte"},
             "experience_max": {"model_field": "experience", "lookup": "lte"},
             "education": {"model_field": "education", "lookup": "exact"},
             "stack": {"model_field": "stack", "lookup": "exact"},
-            "updated_last_month": {"model_field": "updated_at", "lookup": "lte"},
-            "updated_last_year": {"model_field": "updated_at", "lookup": "lte"},
+            "gender" : {"model_field" : "job_seeker__gender" , "lookup" : "exact"},
+            "age" : {"model_field" : "job_seeker__birthday" , "lookup" : "gte"},
             "skills": {"model_field": "skills", "lookup": "contains"},
             "country": {"model_field": "job_seeker__country__name", "lookup": "iexact"},
+            "state": {"model_field": "job_seeker__state__name", "lookup": "iexact"},
             "city": {"model_field": "job_seeker__city__name", "lookup": "iexact"},
         }
 
-         
         resumes = Resume.objects.all()
         query = Q()
         or_query = Q()
         parameters = self.request.query_params
-        for parameter in parameters : 
+
+        for parameter,value in parameters.items():
+            print(parameter)
             filter_match = allowed_filters_dict.get(parameter)
-            if filter_match:
-                value = self.request.query_params.get(parameter)
-                values = value.split(',')    
-                # if len(values) > 1 and parameter in ['skills ' , 'education' , 'stack'] :  
-                if parameter in ['skills' , 'education' , 'stack'] :
-                    try :
-                        if parameter == "skills" :
-                            skills = json.loads(value)
-                            for key,value in skills.items() :
-                                field = f"{filter_match['model_field']}__{filter_match['lookup']}"
-                                query |= Q(**{field : {key.lower(): value.lower()}})
-                    except :
-                        return Response(data={"error" : "error occured for the skills"} , status=status.HTTP_400_BAD_REQUEST)
+            if not filter_match:
+                return Response(data={"error": f"{parameter} is not valid"}, status=status.HTTP_400_BAD_REQUEST)
+        
+            
+            if parameter in ['age'] :
+                try :
+                    field = filter_match['model_field']
+                    # TODO add error handling for the type of the value to be array with isinstance
+                    value = value.split(',')
+                    if len(value) == 2 :
+                        min_age = int(value[0].strip()) 
+                        max_age = int(value[1].strip())
                     else :
-                        for value in values : 
-                            field = f"{filter_match['model_field']}"
-                            or_query |=  Q(**{field : value}) 
-                else :
-                    field = (f"{filter_match['model_field']}__{filter_match['lookup']}")
-                    query &= Q(**{field : value})
-            else :
-                return Response(data={"error" : f"{parameter} is not valid"} , status=status.HTTP_400_BAD_REQUEST)
+                        raise ValueError("min_age and max_age must be entered")
+                    query &= self.get_age_range_query(field , min_age , max_age)
+                except Exception as e:
+                    return Response(data={"error" : str(e)} , status=status.HTTP_400_BAD_REQUEST)
+            
+            if parameter in ['skills', 'education', 'stack']:
+                try:
+                    if parameter == "skills":
+                        skills = json.loads(value)
+                        for key, value in skills.items():
+                            field = f"{filter_match['model_field']}__{key}__{filter_match['lookup']}"
+                            or_query |= Q(**{field: value.lower()})
+                    else:
+                        values = value.split(',')
+                        for val in values:
+                            field = filter_match['model_field']
+                            or_query |= Q(**{field: val})
+                except json.JSONDecodeError:
+                    return Response(data={"error": "Invalid JSON format for skills"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if parameter in ['city' , 'state' , 'country' , 'gender'] :
+                field = f"{filter_match['model_field']}__{filter_match['lookup']}"
+                query &= Q(**{field: value})
+        
         query &= or_query
-        resume = resumes.filter(query)
-        return resume
+        print(query)
+        return resumes.filter(query)
+    
+    
+from common.mixin import LocationFilterMixin
+class FilterEmployerMixin(LocationFilterMixin) :
+    
+    def filter_employer(self) :
+        print('test_em')
+        location_query = self.filter_location()
+        if isinstance(location_query , Response) :
+            return location_query
+        employer = Employer.objects.all()
+        print(employer[0].city.name)
+        return employer.filter(location_query)
         

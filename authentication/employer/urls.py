@@ -3,9 +3,10 @@ from . import views
 
 urlpatterns = [
     path('register/' , views.EmployerRegister.as_view() , name="employer_register"),
+    path('all-employers/' , views.AllEmployers.as_view() , name='all_employers'),
     path('job-offer/' , views.JobOffer.as_view() , name="employer_job_offer"),
     path('all-job-offers/' , views.AllJobOffers.as_view() , name="employer_job_offers"),
-    path('all-resumes/' , views.AllResumes.as_view() , name="all-resumes"),
+    path('all-resumes/' , views.AllResumes.as_view() , name="all_resumes"),
     path('change-offer-status/' , views.ChangeJobOfferStatus.as_view() , name="change_offer_status"),
     path('change-package-price/' , views.ChangePackagePrice.as_view() , name="change_package_price"),
     path('job-applies/' , views.ResumesForOffer.as_view() , name="resume_applies"),

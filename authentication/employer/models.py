@@ -4,11 +4,12 @@ from django.contrib.auth import get_user_model
 import datetime
 # local import
 from account.models import User , Cities , Countries , States
+from common.mixin import GenderFilterMixin
 # Create your models here.
 
 # extra information about the employer
 # TODO add state to it
-class Employer(models.Model):
+class Employer(GenderFilterMixin):
 
     user = models.OneToOneField(User, on_delete=models.CASCADE , related_name="employer")
     name = models.CharField(max_length=100)
@@ -22,7 +23,7 @@ class Employer(models.Model):
     
 # opportunity that employer makes
 # TODO add state to it
-class JobOpportunity(models.Model):
+class JobOpportunity(GenderFilterMixin):
         
     class OfferStatus(models.TextChoices) :
         REGISTRED = "registered" , "Registered"

@@ -70,8 +70,8 @@ class JobSeekerRegister(APIView , CountryCityIdMixin) :
             data['user'] = user
             # adding the city and country
             country_data = self.country_and_city_id(request)
-            if isinstance(data , Response):
-                return data
+            if isinstance(country_data , Response):
+                return country_data
             city = country_data['city']
             country = country_data['country']
             state = country_data['state']
@@ -103,8 +103,16 @@ class JobSeekerRegister(APIView , CountryCityIdMixin) :
             return Response(data={"detail" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
 
         serializer = JobSeekerSerializer(job_seeker , data=request.data , partial=True)
+        # TODO fix the location update bug
         if serializer.is_valid():
-            serializer.save()
+            # country_data = self.country_and_city_id(request)
+            # if isinstance(country_data , Response):
+            #     return country_data
+            # city = country_data['city']
+            # country = country_data['country']
+            # state = country_data['state']
+            # serializer.save(user=user , city=city , country=country , state=state)
+            serializer.save(user=user)
             return Response(data={"detail" : "job seeker updated successfully"}, status=status.HTTP_200_OK)
         return Response(data={"errors" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 

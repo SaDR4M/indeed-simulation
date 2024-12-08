@@ -5,7 +5,7 @@ from account.models import Cities , States , Countries
 from rest_framework import status
 from rest_framework.response import Response
 
-class GenderFilterMixin(models.Model) :
+class GenderMixin(models.Model) :
     class GenderChoices(models.TextChoices) :
         MALE = "male"
         FEMALE = "female"
@@ -48,3 +48,25 @@ class LocationFilterMixin(models.Model) :
         query &= or_query
         print(query)
         return query
+    
+    
+    
+class GenderFilterMixin:
+    
+    def filter_gender(self) :
+        gender_filter_allow_list = {
+            "gender" : {"model_field" : "gender" , "lookup" : "exact"}
+        }
+        parameters = self.request.query_params
+        query = Q()
+        for parameter , value in parameters.items() :
+            filter_match = gender_filter_allow_list.get(parameter)
+            if not filter_match :
+                return Response(data={"error" : f"{parameter} is not valid"} , status=status.HTTP_400_BAD_REQUEST)    
+            field = filter_match['model_field']
+            lookup = filter_match['lookup']
+            if isinstance(value , str) :
+                query &= Q(**{f"{field}__{lookup}" : value})
+        
+        return query
+                

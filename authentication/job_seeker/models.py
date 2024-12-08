@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 # local import
 from account.models import User , Countries ,Cities , States
-from common.mixin import GenderFilterMixin
+from common.mixin import GenderMixin
 # Create your models here.
 
 
@@ -19,7 +19,7 @@ class TestStatusMixin(models.Model) :
     
 
 # specific information about the job seeker
-class JobSeeker(GenderFilterMixin):
+class JobSeeker(GenderMixin):
     
     user = models.OneToOneField(User, on_delete=models.CASCADE , related_name='job_seeker')
     bio = models.TextField(blank=True , null=True)

@@ -15,7 +15,7 @@ from job_seeker.utils import job_seeker_exists
 from job_seeker.serializers import GetResumeSerializer 
 from job_seeker.models import Resume
 from account.models import Cities , Countries , States
-from common.mixins import GenderFilterMixin , LocationFilterMixin
+from common.mixins import GenderFilterMixin , LocationFilterMixin , CreationTimeFilterMixin
 
 
 
@@ -220,23 +220,42 @@ class FilterResumeMixin:
     
     
 
-class FilterEmployerMixin(LocationFilterMixin , GenderFilterMixin) :
+class FilterEmployerMixin(LocationFilterMixin , GenderFilterMixin  , CreationTimeFilterMixin) :
     
     def filter_employer(self) :
-        print('test_em')
-        location_query = self.filter_location()
-        if isinstance(location_query , Response) :
-            return location_query
-        gender_query = self.filter_gender()
-        if isinstance(gender_query , Response) :
-            return gender_query
+        
+        employer_filter_allow_list = {
+            **self.location_filter_allow_list,
+            **self.gender_filter_allow_list,
+            **self.creation_time_filter_allow_list,
+            "title" : {"model_field" : "title" , "lookup" : "icontains"},
+            "address" : {"model_field" : "address" , "lookup": "icontains"},
+            "id_number" : {"model_field" : "id_number" , "lookup" : "exact"},
+            "postal_code" : {"model_field" : "postal_code" , "lookup" : "exact"}
+        }
+        
         employer = Employer.objects.all()
-        print(employer[0].city.name)
         query = Q()
-        print(query)
-        query &= location_query
-        print(query)
-        query &= gender_query
-        print(query)
+        parameters = self.request.query_params
+        
+        for parameter , value in parameters.items() :
+            filter_match = employer_filter_allow_list.get(parameter)
+            if not filter_match :
+                return Response(data={"error" : f"{parameter} is not valid"})
+            
+            if parameter in ['title' , 'address' , 'id_number' , 'postal_code'] :
+                model_field = filter_match['model_field'] 
+                lookup = filter_match['lookup']
+                query &= Q(**{f"{model_field}__{lookup}": value})
+                 
+            if parameter in self.location_filter_allow_list :                 
+                query &= self.filter_location(parameter , value)
+   
+            if parameter in self.gender_filter_allow_list :      
+                query &= self.filter_gender(parameter , value)
+                
+            if parameter in self.creation_time_filter_allow_list :
+                query &= self.filter_creation_time(parameter , value)
+
         return employer.filter(query)
         

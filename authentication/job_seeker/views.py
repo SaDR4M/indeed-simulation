@@ -8,17 +8,18 @@ from guardian.shortcuts import assign_perm , get_objects_for_user
 from rest_framework.parsers import MultiPartParser, FormParser
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-
+from rest_framework.pagination import LimitOffsetPagination
 # local imports
 from employer.models import JobOpportunity
 from .models import JobSeeker, Resume , Application , Test , QuestionAndAnswers
-from .serializers import JobSeekerSerializer, ResumeSerializer , ApplicationSerializer , TestSerializer , QuestionAndAnswersSerializer , GetResumeSerializer
+from .serializers import JobSeekerSerializer, ResumeSerializer , ApplicationSerializer , TestSerializer , QuestionAndAnswersSerializer , GetResumeSerializer , GetJobSeekerSerialzier
 from account.models import User
 from . import utils
 from .serializers import ChangeInterviewJobSeekerScheduleSerializer
 from employer.serializers import InterviewScheduleSerializer
 from employer.models import InterviewSchedule    
 from employer.mixins import InterviewScheduleMixin , CountryCityIdMixin
+from job_seeker.mixins import JobSeekerFilterMixin
 # Create your views here.
 
 class JobSeekerRegister(APIView , CountryCityIdMixin) :
@@ -774,7 +775,28 @@ class ManageQuestion(APIView) :
         qa.save()
         return Response(data={"success" : True} , status=status.HTTP_200_OK)
         
+
+
+
+# TODO add this to admin app
+
+class AllJobSeekers(APIView , JobSeekerFilterMixin) :
+    
+    def get(self , request) :
+        user = request.user
+        if not user.is_superuser :
+            return Response(data={"error" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN) 
         
+        filtered_jobseekers = self.filter_jobseeker()       
+        if isinstance(filtered_jobseekers , Response) :
+            return filtered_jobseekers   
+
+        # paginate the data
+        paginator = LimitOffsetPagination()
+        paginator.paginate_queryset(filtered_jobseekers , request)
         
+        serializer = GetJobSeekerSerialzier(filtered_jobseekers , many=True)
+        return Response(data={"data" : serializer.data} , status=status.HTTP_200_OK)
+
         
         

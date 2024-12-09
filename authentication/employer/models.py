@@ -12,10 +12,11 @@ from common.mixins import GenderMixin
 class Employer(GenderMixin):
 
     user = models.OneToOneField(User, on_delete=models.CASCADE , related_name="employer")
-    name = models.CharField(max_length=100)
+    title = models.CharField(max_length=100)
     address = models.CharField(max_length=250)
     id_number = models.CharField(max_length=25)
     postal_code = models.CharField(max_length=25)
+    created_at = models.DateTimeField(auto_now_add=True)
     country = models.ForeignKey(Countries , related_name="country_employers" , on_delete=models.CASCADE)
     state = models.ForeignKey(States , related_name="state_employers" , on_delete=models.CASCADE)
     city = models.ForeignKey(Cities , related_name="city_emoployers" , on_delete=models.CASCADE)

@@ -702,19 +702,17 @@ class AllResumes(APIView , FilterResumeMixin) :
         security=[{"Bearer" : []}]
     )
     def get(self , request) :  
-        
+        """get all resumes and apply some filtering to them"""
         user = request.user
         employer = utils.employer_exists(user)
         if not employer :
             return Response(data={"detail" : "Employer does not exists"} , status=HTTP_404_NOT_FOUND)
     
         filtered_resume = self.filter_resume()
+        # return response if there was any problem
         if isinstance(filtered_resume , Response) :
             return filtered_resume
-                     
-    
-            
-
+        # paginate the result 
         paginator = LimitOffsetPagination()
         paginator.paginate_queryset(filtered_resume , request)
         
@@ -998,14 +996,19 @@ class ChangePackagePrice(APIView) :
     
 class AllEmployers(APIView , FilterEmployerMixin) :
     def get(self , request) :
-        print('test')
+        """get all the employer with some filtering"""
         user = request.user
         if not user.is_superuser :
             return Response(data={"error" : "User does not have permission to do this action"}  , status=HTTP_403_FORBIDDEN)
         
         employer = self.filter_employer()
-        print(employer)
+        # return the response if there was any problem
         if isinstance(employer , Response) :
             return employer
+        
+        # paginate the result
+        paginator = LimitOffsetPagination()
+        paginator.paginate_queryset(employer , request)
+        
         serializer = GetEmployerSerializer(employer , many=True)
         return Response(data={"data" : serializer.data} , status=HTTP_200_OK)

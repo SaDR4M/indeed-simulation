@@ -12,6 +12,11 @@ class JobSeekerSerializer(serializers.ModelSerializer):
         model = JobSeeker
         exclude = ['user' , 'city' , 'country' , 'state']
         # fields = '__all__'
+        
+class GetJobSeekerSerialzier(serializers.ModelSerializer) :
+    class Meta:
+        model = JobSeeker
+        fields = '__all__'
 
 class ResumeSerializer(serializers.ModelSerializer):
     file = serializers.FileField(required=False)

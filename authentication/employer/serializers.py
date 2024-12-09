@@ -39,7 +39,10 @@ class JobOpportunitySerializer(serializers.ModelSerializer) :
             #     attrs['active'] = True
         return attrs
     
-   
+class GetJobOpportunitySerializer(serializers.ModelSerializer) :
+    class Meta :
+        model = JobOpportunity
+        fields = '__all__'
     
 class ViewedResumeSerializer(serializers.ModelSerializer) :
     resume = serializers.PrimaryKeyRelatedField(queryset=Resume.objects.all())

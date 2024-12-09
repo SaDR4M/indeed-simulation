@@ -18,6 +18,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from .serializers import (EmployerSerializer,
                           GetEmployerSerializer,
                           JobOpportunitySerializer,
+                          GetJobOpportunitySerializer,
                           ViewedResumeSerializer,
                           ChangeApllyStatusSerializer,
                           CartSerializer,
@@ -33,7 +34,7 @@ from package.models import PurchasedPackage, Package
 from .utils import can_create_offer, employer_exists
 from celery.result import AsyncResult
 from job_seeker.utils import job_seeker_exists
-from .mixins import InterviewScheduleMixin , FilterResumeMixin , CountryCityIdMixin , FilterEmployerMixin
+from .mixins import InterviewScheduleMixin , FilterResumeMixin , CountryCityIdMixin , FilterEmployerMixin , FilterJobOpportunityMixin
 from django.db.models import Q
 from rest_framework.pagination import LimitOffsetPagination
 # sms
@@ -455,7 +456,7 @@ class OrderItem(APIView) :
 
     
     
-class JobOffer(APIView , CountryCityIdMixin) :
+class JobOffer(APIView , CountryCityIdMixin , FilterJobOpportunityMixin) :
     
     @swagger_auto_schema(
         operation_summary="job opportunities that user has made",
@@ -475,13 +476,21 @@ class JobOffer(APIView , CountryCityIdMixin) :
         if not employer :
             return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
         # check for offers to exist
-
         job_opportunities = JobOpportunity.objects.filter(employer=employer)
-        if not job_opportunities.exists() :
-            return Response(data={"detail" : "there is no opportunity for this employer"})
+        # if not job_opportunities.exists() :
+        #     return Response(data={"detail" : "there is no opportunity for this employer"})
         # if not user.has_perm('view_jobopportunity' , job_opportunities) :
         #     return Response(data={"detail" : "user does not have permissions for this action"} , status=HTTP_403_FORBIDDEN)
-        serializer = JobOpportunitySerializer(job_opportunities , many=True)
+
+        filter_job_offers = self.filter_job_opportunity(job_opportunities)
+        if isinstance(filter_job_offers , Response) :
+            return filter_job_offers
+        
+        # paginate the data
+        paginator = LimitOffsetPagination()
+        paginator.paginate_queryset(filter_job_offers , request)
+        
+        serializer = GetJobOpportunitySerializer(filter_job_offers , many=True)
         return Response(data={"detail" : serializer.data } , status=HTTP_400_BAD_REQUEST)
     
     
@@ -611,7 +620,7 @@ class JobOffer(APIView , CountryCityIdMixin) :
         offer.update(active=False , expire_at = datetime.datetime.now().strftime('%Y-%m-%d'))
         return Response(data={"detail" : "deleted successfully" } , status=HTTP_200_OK)
     
-class AllJobOffers(APIView) :
+class AllJobOffers(APIView  , FilterJobOpportunityMixin) :
 
     @swagger_auto_schema(
         operation_summary="get all the job offers",
@@ -623,7 +632,16 @@ class AllJobOffers(APIView) :
         )
     def get(self , request):
         job_opportunities = JobOpportunity.objects.all()
-        serializer = JobOpportunitySerializer(job_opportunities , many=True)
+        
+        filtered_job_offer = self.filter_job_opportunity(job_opportunities)
+        if isinstance(filtered_job_offer , Response) :
+            return filtered_job_offer
+        
+        # paginate the data
+        paginator = LimitOffsetPagination()
+        paginator.paginate_queryset(filtered_job_offer , request)
+        
+        serializer = JobOpportunitySerializer(filtered_job_offer , many=True)
         return Response(data={"detail" : serializer.data } , status=HTTP_200_OK)
     
     
@@ -1012,3 +1030,4 @@ class AllEmployers(APIView , FilterEmployerMixin) :
         
         serializer = GetEmployerSerializer(employer , many=True)
         return Response(data={"data" : serializer.data} , status=HTTP_200_OK)
+    

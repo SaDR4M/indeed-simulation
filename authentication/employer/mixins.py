@@ -16,7 +16,7 @@ from job_seeker.serializers import GetResumeSerializer
 from job_seeker.models import Resume
 from account.models import Cities , Countries , States
 from common.mixins import GenderFilterMixin , LocationFilterMixin , CreationTimeFilterMixin
-
+from .models import JobOpportunity
 
 
 class InterviewScheduleMixin:
@@ -259,3 +259,44 @@ class FilterEmployerMixin(LocationFilterMixin , GenderFilterMixin  , CreationTim
 
         return employer.filter(query)
         
+        
+class FilterJobOpportunityMixin(LocationFilterMixin , GenderFilterMixin , CreationTimeFilterMixin) :
+        def filter_job_opportunity(self , job_offers) :
+        
+            job_opportunity_filter_allow_list = {
+                **self.location_filter_allow_list,
+                **self.gender_filter_allow_list,
+                **self.creation_time_filter_allow_list,
+                "active" : {"model_field" : "active" , "lookup" : "exact"},
+                "title" : {"model_field" : "title" , "lookup" : "icontains"},
+                "status" : {"model_field" : "status" , "lookup" : "icontains"}
+            }
+            
+            
+            query = Q()
+            # job_offers = JobOpportunity.objects.all()
+            parameters = self.request.query_params
+            
+            for parameter,value in parameters.items() :
+                filter_match = job_opportunity_filter_allow_list.get(parameter)
+                if not filter_match :
+                    return Response(data={"error" : f"{parameter} is not valid"} , status=status.HTTP_400_BAD_REQUEST)
+                
+                model_field = filter_match['model_field']
+                lookup = filter_match['lookup']      
+                      
+                if parameter in ['active' , 'status' , 'title'] :
+                    if parameter == 'active' :
+                        value = value.title()
+                    query &= Q(**{f"{model_field}__{lookup}" : value})
+
+                if parameter in self.gender_filter_allow_list :
+                    query &= self.filter_gender(parameter , value)
+                    
+                if parameter in self.location_filter_allow_list :
+                    query &= self.filter_location(parameter , value)
+                    
+                if parameter in self.creation_time_filter_allow_list :
+                    query &= self.filter_creation_time(parameter , value)
+            
+            return job_offers.filter(query)

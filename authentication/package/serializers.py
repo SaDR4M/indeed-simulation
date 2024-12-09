@@ -37,6 +37,13 @@ class PackageSerializer(serializers.ModelSerializer) :
         #     raise ValidationError("with this count you can only have on active package , deactive the other packages to register this package")
         return attrs
 
+class GetPackageSerializer(serializers.ModelSerializer) :
+    class Meta :
+        model = Package
+        fields = '__all__'
+
+
+
 class PurchasePackageSerializer(serializers.ModelSerializer) :
     package = serializers.PrimaryKeyRelatedField(queryset=Package.objects.all())
     payment = serializers.PrimaryKeyRelatedField(queryset=Payment.objects.all())

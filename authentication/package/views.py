@@ -6,12 +6,15 @@ from rest_framework import status
 from rest_framework.response import Response
 from guardian.shortcuts import assign_perm
 from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 # local imports
 from employer.models import Employer
-from .serializers import PackageSerializer , PurchasePackageSerializer
+from .serializers import PackageSerializer , PurchasePackageSerializer , GetPackageSerializer
 from .models import Package , PurchasedPackage
 from payment.models import Payment
 from employer.utils import employer_exists
+from .mixins import FilterPackageMixin
+from rest_framework.pagination import LimitOffsetPagination
 # Create your views here.
 
 # only admins can create package for job offers
@@ -54,13 +57,13 @@ class CreatePackage(APIView) :
         serializer = PackageSerializer(data=request.data)
         if serializer.is_valid() :
             count = serializer.validated_data['count']
-            type  = serializer.validated_data['type']
+            package_type  = serializer.validated_data['type']
 
-            if type == "offer" :
+            if package_type == "resume" :
                 priority = "normal"
             else :
                 priority = serializer.validated_data['priority']
-            package = Package.objects.filter(type=type, priority=priority, count=count, active=True).count()
+            package = Package.objects.filter(type=package_type, priority=priority, count=count, active=True).count()
             if package >= 1:
                 return Response(data={"detail" : "with this count you can only have on active package , deactive the other packages to register this package"} , status=status.HTTP_400_BAD_REQUEST)
             serializer.save(user=user)
@@ -152,3 +155,47 @@ class PurchasePackage(APIView) :
         return Response(data={"detail" : serializer.errors } , status=status.HTTP_400_BAD_REQUEST)
 
 
+# TODO ADD THIS TO THE ADMIN APP
+
+class AllPackage(APIView , FilterPackageMixin) :
+    @swagger_auto_schema(
+    operation_summary="all packages",
+    operation_description="get all packages with filtering that . filtering option are specified in the query params document",
+    manual_parameters=[
+        openapi.Parameter(name="price" , in_=openapi.IN_QUERY , type=openapi.TYPE_NUMBER , description="get the packages with this EXACT price (for having range price you must define max and min price together)"),
+        openapi.Parameter(name="min_price" , in_=openapi.IN_QUERY , type=openapi.TYPE_NUMBER , description="get the packages with MIN price (lte)"),
+        openapi.Parameter(name="max_price" , in_=openapi.IN_QUERY , type=openapi.TYPE_NUMBER , description="get the packages with MAX price (gte)"),
+        openapi.Parameter(name="active" , in_=openapi.IN_QUERY , type=openapi.TYPE_BOOLEAN , description="get the packages with EXACT type . options are True , False"),
+        openapi.Parameter(name="count" , in_=openapi.IN_QUERY , type=openapi.TYPE_INTEGER , description="get the packages with EXACT count"),
+        openapi.Parameter(name="type" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the packages with EXACT type. options are : 'offer' , 'resume' "),
+        openapi.Parameter(name="priority" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the packages with EXACT priority. options are : 'normal' , 'urgent' "),
+        openapi.Parameter(name="created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING, description="get the packages with this EXACT created date time (for having range date time you must define max and min created date time together)"),
+        openapi.Parameter(name="min_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the packages with MIN created date time (lte)"),
+        openapi.Parameter(name="max_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the packages with MAX created date time  (gte)"),
+        openapi.Parameter(name="deleted_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING, description="get the packages with this EXACT deleted date time (for having range date time you must define max and min deleted date time together)"),
+        openapi.Parameter(name="min_deleted_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the packages with MIN deleted date time (lte)"),
+        openapi.Parameter(name="max_deleted_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the packages with MAX deleted date time  (gte)"),
+    ],
+    responses={
+            200 : GetPackageSerializer,
+            400 : "invalid parameters",
+            404 : "employer/offer was not found",
+        },
+    security=[{"Bearer" : []}]
+    )
+    def get(self , request) :
+        user = request.user 
+        if not user.is_superuser :
+            return Response(data={"error" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
+        
+        packages = Package.objects.all()
+        filtered_package = self.filter_package(packages)
+        if isinstance(filtered_package , Response) :
+            return filtered_package
+        
+        # paginate the data
+        paginator = LimitOffsetPagination()
+        paginator.paginate_queryset(filtered_package , request)
+        
+        serializer = GetPackageSerializer(filtered_package , many=True)
+        return Response(data={"data" : serializer.data} , status=status.HTTP_200_OK)

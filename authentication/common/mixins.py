@@ -1,10 +1,10 @@
+import json
 # third party imports
 from django.db import models 
 from django.db.models import Q
 from account.models import Cities , States , Countries
 from rest_framework import status
 from rest_framework.response import Response
-
 # local imports
 
 
@@ -44,13 +44,14 @@ class LocationFilterMixin(models.Model) :
         if filter_match :
             field = filter_match['model_field']
             look_up = filter_match['lookup']
-                
-            if isinstance(value , str) :
-                query &= Q(**{f"{field}__{look_up}" : value})
 
-            if isinstance(value , list) :
-                for data in value :
-                    query |= Q(**{f"{field}__{look_up}" : data})
+            if "," in value :
+                values = value.split(",")
+                for value in values :
+                    query |= Q(**{f"{field}__{look_up}" : value.strip()})
+            else :
+                query &= Q(**{f"{field}__{look_up}" : value.strip()})
+            
                 
             query &= or_query
             return query
@@ -71,8 +72,7 @@ class GenderFilterMixin:
             field = filter_match['model_field']
             lookup = filter_match['lookup']
                     
-            if isinstance(value , str) :
-                query &= Q(**{f"{field}__{lookup}" : value})
+            query &= Q(**{f"{field}__{lookup}" : value})
             
             return query
                 

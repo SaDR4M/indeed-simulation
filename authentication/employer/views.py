@@ -34,7 +34,7 @@ from package.models import PurchasedPackage, Package
 from .utils import can_create_offer, employer_exists
 from celery.result import AsyncResult
 from job_seeker.utils import job_seeker_exists
-from .mixins import InterviewScheduleMixin , FilterResumeMixin , CountryCityIdMixin , FilterEmployerMixin , FilterJobOpportunityMixin
+from .mixins import InterviewScheduleMixin , FilterResumeMixin , CountryCityIdMixin , FilterEmployerMixin , FilterJobOpportunityMixin , FilterOrderMixin
 from django.db.models import Q
 from rest_framework.pagination import LimitOffsetPagination
 # sms
@@ -305,7 +305,7 @@ class Cartitems(APIView) :
         cart_item.delete()
         return Response(data={"success" : True } , status=HTTP_200_OK)
 
-class Order(APIView) :
+class Order(APIView , FilterOrderMixin) :
     # list of the order by the user
     @swagger_auto_schema(
         operation_summary="get orders data of the employer",
@@ -324,14 +324,21 @@ class Order(APIView) :
         if not employer:
             return Response(data={"detail": "Employer does not exist"}, status=HTTP_404_NOT_FOUND)
         # using prefetch cause we want to get all the order items and package datas we use it to decrease the querie
-        orders = EmployerOrder.objects.filter(employer=employer).prefetch_related(
+        employer_orders = EmployerOrder.objects.filter(employer=employer)
+
+        filtered_orders = self.filter_order(employer_orders)
+        if isinstance(filtered_orders , Response) :
+            return filtered_orders
+        
+        orders = filtered_orders.prefetch_related(
             'order_items__package'  #
         ).order_by('order_at')
         
-        if not orders.exists():
-            return Response(data={"detail": "Order does not exist"}, status=HTTP_404_NOT_FOUND)
+        # if not orders.exists():
+        #     return Response(data={"detail": "Order does not exist"}, status=HTTP_404_NOT_FOUND)
         
         # serialize the orders
+        # TODO add the package filterign to the order
         data = []
         for order in orders:
 
@@ -641,7 +648,7 @@ class AllJobOffers(APIView  , FilterJobOpportunityMixin) :
         paginator = LimitOffsetPagination()
         paginator.paginate_queryset(filtered_job_offer , request)
         
-        serializer = JobOpportunitySerializer(filtered_job_offer , many=True)
+        serializer = GetJobOpportunitySerializer(filtered_job_offer , many=True)
         return Response(data={"detail" : serializer.data } , status=HTTP_200_OK)
     
     

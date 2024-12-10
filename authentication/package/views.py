@@ -58,7 +58,15 @@ class CreatePackage(APIView) :
         if serializer.is_valid() :
             count = serializer.validated_data['count']
             package_type  = serializer.validated_data['type']
+            price = serializer.validated_data['price']
 
+            if price <= 0 :
+                return Response(data={"error" : "price must be more than 0 "} , status=status.HTTP_400_BAD_REQUEST) 
+            
+            if count <= 0 :
+                return Response(data={"error" : "count must be more than 1"} , status=status.HTTP_400_BAD_REQUEST)
+            
+            
             if package_type == "resume" :
                 priority = "normal"
             else :

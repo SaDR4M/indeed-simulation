@@ -10,11 +10,10 @@ from payment.models import Payment
 
 
 class PackageSerializer(serializers.ModelSerializer) :
-    created_at = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S' , required=False)
     class Meta :
         model = Package
         exclude = ['user']
-        read_only = ['id']
+        read_only = ['id' , 'created_at']
         
     def validate(self , attrs) : 
         

@@ -133,7 +133,7 @@ class CountryCityIdMixin:
          
 
 
-class FilterResumeMixin:
+class FilterResumeMixin(CreationTimeFilterMixin):
     def get_date_range_query(self, field, days):
         today = datetime.now()
         if int(days) > 365:
@@ -153,33 +153,81 @@ class FilterResumeMixin:
     
     
     
-    def filter_resume(self):
-        
+    def filter_resume(self , list_type , resumes):
         """list of filters that are allowed"""
-        allowed_filters_dict = {
-            "experience_min": {"model_field": "experience", "lookup": "gte"},
-            "experience_max": {"model_field": "experience", "lookup": "lte"},
-            "education": {"model_field": "education", "lookup": "exact"},
-            "stack": {"model_field": "stack", "lookup": "exact"},
-            "gender" : {"model_field" : "job_seeker__gender" , "lookup" : "exact"},
-            "age" : {"model_field" : "job_seeker__birthday" , "lookup" : "gte"},
-            "skills": {"model_field": "skills", "lookup": "contains"},
-            "country": {"model_field": "job_seeker__country__name", "lookup": "iexact"},
-            "state": {"model_field": "job_seeker__state__name", "lookup": "iexact"},
-            "city": {"model_field": "job_seeker__city__name", "lookup": "iexact"},
-        }
+        if list_type == "resume" :
+            resume_allow_filter_list = {
+                **self.creation_time_filter_allow_list,
+                "experience" : {"model_field" : "experience" , "lookup" : "exact"},
+                "min_experience": {"model_field": "experience", "lookup": "gte"},
+                "max_experience": {"model_field": "experience", "lookup": "lte"},
+                "education": {"model_field": "education", "lookup": "exact"},
+                "stack": {"model_field": "stack", "lookup": "exact"},
+                "gender" : {"model_field" : "job_seeker__gender" , "lookup" : "exact"},
+                "age" : {"model_field" : "job_seeker__birthday" , "lookup" : "gte"},
+                "skills": {"model_field": "skills", "lookup": "contains"},
+                "country": {"model_field": "job_seeker__country__name", "lookup": "iexact"},
+                "state": {"model_field": "job_seeker__state__name", "lookup": "iexact"},
+                "city": {"model_field": "job_seeker__city__name", "lookup": "iexact"},
+            }
+        if list_type == "viewed_resume" : 
+            resume_allow_filter_list = {
+                "seen_at" : {"model_field" : "seen_at__date" , "lookup" : "exact"} ,
+                "min_seen_at" : {"model_field" : "seen_at__date" , "lookup" : "gte"},
+                "max_seen_at" : {"model_field" : "seen_at__date" , "lookup" : "lte"},
+                "resume_created_at" : {"model_field" : "resume__created_at__date" , "lookup" : "exact"},
+                "resume_min_created_at" : {"model_field" : "resume__created_at__date" , "lookup" : "gte"},
+                "resume_max_created_at" : {"model_field" : "resume__created_at__date" , "lookup" : "lte"},
+                "experience" : {"model_field" : "resume__experience" , "lookup" : "exact"},
+                "min_experience": {"model_field": "resume__experience", "lookup": "gte"},
+                "max_experience": {"model_field": "resume__experience", "lookup": "lte"},
+                "education": {"model_field": "resume__education", "lookup": "exact"},
+                "stack": {"model_field": "resume__stack", "lookup": "exact"},
+                "gender" : {"model_field" : "resume__job_seeker__gender" , "lookup" : "exact"},
+                "age" : {"model_field" : "resume__job_seeker__birthday" , "lookup" : "gte"},
+                "skills": {"model_field": "resume__skills", "lookup": "contains"},
+                "country": {"model_field": "resume__job_seeker__country__name", "lookup": "iexact"},
+                "state": {"model_field": "resume__job_seeker__state__name", "lookup": "iexact"},
+                "city": {"model_field": "resume__job_seeker__city__name", "lookup": "iexact"},
+            }
 
-        resumes = Resume.objects.all()
+        if list_type == "viewed_applied_resume" :
+            resume_allow_filter_list = {
+                "seen_at" : {"model_field" : "seen_at__date" , "lookup" : "exact"} ,
+                "min_seen_at" : {"model_field" : "seen_at__date" , "lookup" : "gte"},
+                "max_seen_at" : {"model_field" : "seen_at__date" , "lookup" : "lte"},
+                "resume_created_at" : {"model_field" : "resume__created_at__date" , "lookup" : "exact"},
+                "resume_min_created_at" : {"model_field" : "resume__created_at__date" , "lookup" : "gte"},
+                "resume_max_created_at" : {"model_field" : "resume__created_at__date" , "lookup" : "lte"},
+                "experience" : {"model_field" : "resume__experience" , "lookup" : "exact"},
+                "min_experience": {"model_field": "resume__experience", "lookup": "gte"},
+                "max_experience": {"model_field": "resume__experience", "lookup": "lte"},
+                "education": {"model_field": "resume__education", "lookup": "exact"},
+                "stack": {"model_field": "resume__stack", "lookup": "exact"},
+                "gender" : {"model_field" : "resume__job_seeker__gender" , "lookup" : "exact"},
+                "age" : {"model_field" : "resume__job_seeker__birthday" , "lookup" : "gte"},
+                "skills": {"model_field": "resume__skills", "lookup": "contains"},
+                "country": {"model_field": "resume__job_seeker__country__name", "lookup": "iexact"},
+                "state": {"model_field": "resume__job_seeker__state__name", "lookup": "iexact"},
+                "city": {"model_field": "resume__job_seeker__city__name", "lookup": "iexact"},
+                "job_offer_name" : {"model_field" : "job_offer__title" ,  "lookup" : "icontains"},
+            }
+
+
+        # resumes = Resume.objects.all()
         query = Q()
         or_query = Q()
         parameters = self.request.query_params
 
         for parameter,value in parameters.items():
-            print(parameter)
-            filter_match = allowed_filters_dict.get(parameter)
+            filter_match = resume_allow_filter_list.get(parameter)
             if not filter_match:
                 return Response(data={"error": f"{parameter} is not valid"}, status=status.HTTP_400_BAD_REQUEST)
         
+            
+            if parameter in self.creation_time_filter_allow_list :
+                query &= self.filter_creation_time(parameter , value)
+            
             
             if parameter in ['age'] :
                 try :
@@ -201,7 +249,7 @@ class FilterResumeMixin:
                         skills = json.loads(value)
                         for key, value in skills.items():
                             field = f"{filter_match['model_field']}__{key}__{filter_match['lookup']}"
-                            or_query |= Q(**{field: value.lower()})
+                            or_query |= Q(**{field: value})
                     else:
                         values = value.split(',')
                         for value in values:
@@ -210,15 +258,15 @@ class FilterResumeMixin:
                 except json.JSONDecodeError:
                     return Response(data={"error": "Invalid JSON format for skills"}, status=status.HTTP_400_BAD_REQUEST)
             
-            if parameter in ['city' , 'state' , 'country' , 'gender'] :
+            else :
                 field = f"{filter_match['model_field']}__{filter_match['lookup']}"
                 query &= Q(**{field: value})
         
         query &= or_query
-        print(query)
         return resumes.filter(query)
     
     
+
 
 class FilterEmployerMixin(LocationFilterMixin , GenderFilterMixin  , CreationTimeFilterMixin) :
     
@@ -332,4 +380,4 @@ class FilterOrderMixin :
         query &= or_query
         return orders.filter(query)
             
-    
+

@@ -4,9 +4,9 @@ from rest_framework.validators import ValidationError
 from rest_framework import serializers
 
 # local import
-from employer.models import Employer, JobOpportunity, ViewedResume, EmployerCartItem, EmployerCart, EmployerOrder, EmployerOrderItem ,InterviewSchedule
+from employer.models import Employer, JobOpportunity, ViewedResume, EmployerCartItem, EmployerCart, EmployerOrder, EmployerOrderItem ,InterviewSchedule , ViewedAppliedResume
 from package.models import Package
-from job_seeker.models import Resume , Application
+from job_seeker.models import Resume , Application 
 
 class EmployerSerializer(serializers.ModelSerializer) :
     class Meta :
@@ -50,6 +50,23 @@ class ViewedResumeSerializer(serializers.ModelSerializer) :
         model = ViewedResume
         exclude = ["employer"]
         
+class GetViewedResumeSerializer(serializers.ModelSerializer) :
+    class Meta:
+        model = ViewedResume
+        fields = '__all__'        
+        
+class AppliedViewedResumeSerializer(serializers.ModelSerializer) :
+    class Meta :
+        model = ViewedAppliedResume
+        exclude = ['job_offer' , 'resume']
+        
+class GetAppliedViewedResumeSerializer(serializers.ModelSerializer) :
+    class Meta :
+        model = ViewedAppliedResume
+        fields = '__all__'
+
+
+
 class ChangeApllyStatusSerializer(serializers.ModelSerializer) :
     # id = serializers.PrimaryKeyRelatedField(queryset=Application.objects.all())
     class Meta :

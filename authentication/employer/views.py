@@ -20,12 +20,14 @@ from .serializers import (EmployerSerializer,
                           JobOpportunitySerializer,
                           GetJobOpportunitySerializer,
                           ViewedResumeSerializer,
+                          GetViewedResumeSerializer,
                           ChangeApllyStatusSerializer,
                           CartSerializer,
-                          CartItemSerializer, OrderSerializer, OrderItemSerializer, ChangeInterviewEmployerScheduleSerializer , InterviewScheduleSerializer,
+                          CartItemSerializer, OrderSerializer, OrderItemSerializer, ChangeInterviewEmployerScheduleSerializer , InterviewScheduleSerializer,AppliedViewedResumeSerializer , GetAppliedViewedResumeSerializer
                           )
                           
-from .models import Employer, JobOpportunity, ViewedResume , EmployerCart , EmployerCartItem , EmployerOrderItem , EmployerOrder , InterviewSchedule
+from .models import Employer, JobOpportunity, ViewedResume , EmployerCart , EmployerCartItem , EmployerOrderItem , EmployerOrder , InterviewSchedule , ViewedAppliedResume 
+
 from job_seeker.utils import assign_base_permissions
 from . import utils
 from job_seeker.models import Resume , Application
@@ -35,6 +37,7 @@ from .utils import can_create_offer, employer_exists
 from celery.result import AsyncResult
 from job_seeker.utils import job_seeker_exists
 from .mixins import InterviewScheduleMixin , FilterResumeMixin , CountryCityIdMixin , FilterEmployerMixin , FilterJobOpportunityMixin , FilterOrderMixin
+
 from django.db.models import Q
 from rest_framework.pagination import LimitOffsetPagination
 # sms
@@ -694,11 +697,17 @@ class AllResumes(APIView , FilterResumeMixin) :
         operation_description="view the all the available resume don't matter they sent it to employer or not",
         manual_parameters=[
             openapi.Parameter(
+                'experience', openapi.IN_QUERY, description="EAXCT years of experience ", type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
                 'experience_min', openapi.IN_QUERY, description="Minimum years of experience", type=openapi.TYPE_INTEGER
             ),
             openapi.Parameter(
                 'experience_max', openapi.IN_QUERY, description="Maximum years of experience", type=openapi.TYPE_INTEGER
             ),
+            openapi.Parameter(name="created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING, description="get the resume with this EXACT created date time (for having range date time you must define max and min created date time together)"),
+            openapi.Parameter(name="min_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the resume with MIN created date time (lte)"),
+            openapi.Parameter(name="max_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the resume with MAX created date time  (gte)"),
             openapi.Parameter(
                 'age', openapi.IN_QUERY, description="Age range (min_age,max_age)", type=openapi.TYPE_STRING
             ),
@@ -732,8 +741,10 @@ class AllResumes(APIView , FilterResumeMixin) :
         employer = utils.employer_exists(user)
         if not employer :
             return Response(data={"detail" : "Employer does not exists"} , status=HTTP_404_NOT_FOUND)
-    
-        filtered_resume = self.filter_resume()
+
+        resumes = Resume.objects.all()
+        
+        filtered_resume = self.filter_resume('resume' , resumes)
         # return response if there was any problem
         if isinstance(filtered_resume , Response) :
             return filtered_resume
@@ -748,7 +759,91 @@ class AllResumes(APIView , FilterResumeMixin) :
 
 
 # transfer the resume to the seen resumes and minus from the remaining 
-class ResumeViewer(APIView) :
+class ResumeViewer(APIView , FilterResumeMixin) :
+    
+    
+    
+    """get the all viewed resume by employer . it can be fitlered"""
+    @swagger_auto_schema(
+        operation_summary="get all viewed resume by employer",
+        operation_description="get all resume that employer viewed them",
+        manual_parameters=[
+                
+            openapi.Parameter(
+                'experience', openapi.IN_QUERY, description="EAXCT years of experience ", type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'experience_min', openapi.IN_QUERY, description="Minimum years of experience", type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'experience_max', openapi.IN_QUERY, description="Maximum years of experience", type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(name="resume_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING, description="get the resume with this EXACT created date time (for having range date time you must define max and min created date time together)"),
+            openapi.Parameter(name="resume_min_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the resume with MIN created date time (lte)"),
+            openapi.Parameter(name="resume_max_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the resume with MAX created date time  (gte)"),
+            openapi.Parameter(name='seen_at' , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the resume with EXACT seen date "),
+            openapi.Parameter(name='min_seen_at' , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the resume with MIN seen date"),
+            openapi.Parameter(name='max_seen_at' , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the resume with MAX seen date"),
+            openapi.Parameter(
+                'age', openapi.IN_QUERY, description="Age range (min_age,max_age)", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'skills', openapi.IN_QUERY, description="Skills to filter by (JSON format)", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'gender', openapi.IN_QUERY, description="Gender (exact match)", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'city', openapi.IN_QUERY, description="City to filter by (exact match)", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'state', openapi.IN_QUERY, description="State to filter by (exact match)", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'country', openapi.IN_QUERY, description="Country to filter by (exact match)", type=openapi.TYPE_STRING
+            ),
+        ],
+        # request_body=,
+        responses={
+            200 : GetViewedResumeSerializer,
+            400 : "invalid parameters",
+            404 : "employer was not found",
+        },
+        security=[{"Bearer" : []}]
+    )
+    def get(self , request) :
+        user = request.user
+        employer = employer_exists(user)
+        if not employer:
+            return Response(data={"error" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
+        
+        viewed_resumes = ViewedResume.objects.filter(employer=employer)
+        
+        # filter viewed resume
+        filter_data = self.filter_resume("viewed_resume" , viewed_resumes)
+        if isinstance(filter_data , Response) :
+            return filter_data
+        
+
+            
+        # paginate the data
+        paginator = LimitOffsetPagination()
+        paginator.paginate_queryset(filter_data , request)
+        
+        data = []
+        # show resume in the viewed resumes
+        for viewed_resume in filter_data :
+            viewed_resume_serializer = GetViewedResumeSerializer(viewed_resume).data
+            resume_serializer_serializer = GetResumeSerializer(viewed_resume.resume).data
+            viewed_resume_serializer['resume'] = resume_serializer_serializer
+            data.append(viewed_resume_serializer)
+        return Response(data={'data' : data} , status=HTTP_200_OK) 
+     
+    
+    
+    
+    
+    
     @swagger_auto_schema(
         operation_summary="transfer the resume that employer saw to viewed resume",
         operation_description="transfer the resume to the viewed resume to know each employer saw what resumes avoiding duplicate",
@@ -756,7 +851,7 @@ class ResumeViewer(APIView) :
         responses={
             200 : "success",
             400 : "invalid parameters",
-            404 : "employer/offer was not found",
+            404 : "employer/job opportunity/job apply was not found",
         },
         security=[{"Bearer" : []}]
     )
@@ -764,6 +859,7 @@ class ResumeViewer(APIView) :
         user = request.user
         employer = utils.employer_exists(user)
         offer_id = request.data.get('offer_id')
+        
         if not offer_id :
             return Response(data={"detail" : "must enter the offer id"} , status=HTTP_400_BAD_REQUEST)
 
@@ -772,13 +868,11 @@ class ResumeViewer(APIView) :
         serializer = ViewedResumeSerializer(data=request.data)
         # save the resume for the employer the see what resume 
         if serializer.is_valid() :
-            # avoid duplicate for the resume
             data = serializer.validated_data
             resume = data['resume']
-            if ViewedResume.objects.filter(employer=employer , resume=resume).exists() :
-                return Response(data={"detail" : "Resume was seen before"})
 
             # check if user have purchased packages or not
+            # TODO change package type to resume
             purchased = PurchasedPackage.objects.filter(employer=employer , active=True , package__type="offer").order_by('bought_at')
             if not purchased.exists() :
                 return Response(data={"detail" : "employer does not have any purchased packages"})
@@ -787,9 +881,12 @@ class ResumeViewer(APIView) :
                 offer = JobOpportunity.objects.get(employer=employer, pk=offer_id)
             except JobOpportunity.DoesNotExist :
                 return Response(data={"detail" : "offer does not exists"} , status=HTTP_404_NOT_FOUND)
+            # avoid duplicate for the resume
+            if ViewedResume.objects.filter(employer=employer ,  resume=resume).exists() :
+                return Response(data={"detail" : "Resume was seen before"})
             # check that the resume is in the job application or not
             try :
-                apply = Application.objects.get(job_opportunity=offer , job_seeker__resumes=resume)
+                apply = Application.objects.get(job_opportunity=offer , job_seeker=resume.job_seeker)
             except Application.DoesNotExist :
                 return Response(data={"detail" : "apply does not exists"} , status=HTTP_404_NOT_FOUND)
 
@@ -803,11 +900,156 @@ class ResumeViewer(APIView) :
             # minus from the remaining
             purchased_instance = purchased.first()
             new_remaining = purchased_instance.remaining - 1
-            purchased_instance.remaining =new_remaining
+            purchased_instance.remaining = new_remaining
             purchased_instance.save()
 
             return Response(data={"success" : True} , status=HTTP_200_OK)
         return Response(data={"success" : False , "errors" : serializer.errors } , status=HTTP_400_BAD_REQUEST)
+    
+    
+    
+    
+class AppliedResumeViewer(APIView , FilterResumeMixin) :
+    """get the all viewed applied resume by employer . it can be fitlered"""
+    @swagger_auto_schema(
+        operation_summary="get all applied resume that are viewed by employer",
+        operation_description="get all applied resume that are viewed by employer . it can be filtered base on the resume , apply , job offer name",
+        manual_parameters=[
+                
+            openapi.Parameter(
+                'experience', openapi.IN_QUERY, description="EAXCT years of experience ", type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'experience_min', openapi.IN_QUERY, description="Minimum years of experience", type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'experience_max', openapi.IN_QUERY, description="Maximum years of experience", type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(name="resume_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING, description="get the resume with this EXACT created date time (for having range date time you must define max and min created date time together)"),
+            openapi.Parameter(name="resume_min_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the resume with MIN created date time (lte)"),
+            openapi.Parameter(name="resume_max_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the resume with MAX created date time  (gte)"),
+            openapi.Parameter(name='seen_at' , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the resume with EXACT seen date "),
+            openapi.Parameter(name='min_seen_at' , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the resume with MIN seen date"),
+            openapi.Parameter(name='max_seen_at' , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the resume with MAX seen date"),
+            openapi.Parameter(
+                'age', openapi.IN_QUERY, description="Age range (min_age,max_age)", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'skills', openapi.IN_QUERY, description="Skills to filter by (JSON format)", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'gender', openapi.IN_QUERY, description="Gender (exact match)", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'city', openapi.IN_QUERY, description="City to filter by (exact match)", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'state', openapi.IN_QUERY, description="State to filter by (exact match)", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'country', openapi.IN_QUERY, description="Country to filter by (exact match)", type=openapi.TYPE_STRING
+            ),           
+            openapi.Parameter(
+                'job_offer_name', openapi.IN_QUERY, description="viewed applied resume that CONTAINS (in case sensitive) job offer name ", type=openapi.TYPE_INTEGER
+            ),
+        ],
+        # request_body=,
+        responses={
+            200 : GetAppliedViewedResumeSerializer,
+            400 : "invalid parameters",
+            403 : "does not have permission",
+            404 : "employer/job opportunity/apply was not found",   
+        },
+        security=[{"Bearer" : []}]
+    )
+    def get(self , request) :
+        user = request.user
+        employer = employer_exists(user)
+        if not employer :
+            return Response(data={"error" : "employer does not exists"} , status=HTTP_400_BAD_REQUEST)
+        
+        
+        viewed_applied_resumes = ViewedAppliedResume.objects.filter(job_offer__employer=employer)
+        # check permission of user
+        for viewed_applied_resume in viewed_applied_resumes :
+            if not user.has_perm("view_viewedappliedresume" , viewed_applied_resume) :
+                return Response(data={"error" : "user does not have permission to do this action"} , status=HTTP_403_FORBIDDEN)
+        # filter the data
+        filtered_data = self.filter_resume("viewed_applied_resume" , viewed_applied_resumes)
+        if isinstance(filtered_data , Response) :
+            return filtered_data
+        # paginate the data
+        paginator = LimitOffsetPagination()
+        paginator.paginate_queryset(filtered_data , request)
+        # add resume and job offer to the response
+        data = []
+        for viewed_resume in filtered_data :
+            applied_serializer = GetAppliedViewedResumeSerializer(viewed_resume).data
+            # serializer the resume then add it to applied serializer
+            resume_serializer = GetResumeSerializer(viewed_resume.resume).data
+            applied_serializer['resume'] = resume_serializer
+            # serializer the job offer then add it to applied serializer
+            offer_serializer = GetJobOpportunitySerializer(viewed_resume.job_offer).data
+            applied_serializer['job_offer'] = offer_serializer
+            data.append(applied_serializer)
+        
+        return Response(data={"data" : data} , status=HTTP_200_OK)
+  
+  
+  
+    """add the resume that employer seen in the applied resume to the viewed applied resume"""
+    @swagger_auto_schema(
+        operation_summary="add the applied resume to employer viewed resume",
+        operation_description="add the applied resume to employer viewed resume ** this is different that the viewed resume this is only for the resume that are applied for employer job offers**",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'offer_id'  : openapi.Schema(type=openapi.TYPE_INTEGER , description="the offer_id of that resume applied to"),
+                'apply_id' : openapi.Schema(type=openapi.TYPE_INTEGER , description="the apply_id of that resume applied to"),
+            },
+            required=['offer_id' , 'apply_id'],
+        ),
+        responses={
+            200: "success",
+            400 : "invalid paramters",
+            404 : "offer/apply was not found"
+        },
+        security=[{"Bearer" : []}]
+        
+    )
+    def post(self , request) :
+        user = request.user
+        employer = employer_exists(user)
+        if not employer :
+            return Response(data={"error" : "employer does not exists" } , status=HTTP_404_NOT_FOUND)
+
+        apply_id = request.data.get('apply_id')
+        if not apply_id :
+            return Response(data={"error" : "apply_id must be entered"} , status=HTTP_400_BAD_REQUEST)
+        
+        try :
+            # not important to use prefetch related in this situation cause it is just one data 
+            apply = Application.objects.prefetch_related('job_seeker').get(pk=apply_id , job_opportunity__employer = employer)
+            applied_resume = apply.job_seeker.resume
+            job_offer = apply.job_opportunity
+            print(applied_resume)
+        except Application.DoesNotExist :
+            return Response(data={"error" : "job apply does not exists"} , status=HTTP_404_NOT_FOUND)
+
+        # check that employer viewed this resume for the apply before or not
+        viewed_applied_resume = ViewedAppliedResume.objects.filter(job_offer = job_offer, resume = applied_resume)
+        if viewed_applied_resume.exists() :
+            return Response(data={"error" : "employer viewed this resume before"} , status=HTTP_400_BAD_REQUEST)
+        
+        serializer = AppliedViewedResumeSerializer(data=request.data)
+        if serializer.is_valid() :
+            serializer.validated_data['job_offer'] = job_offer
+            serializer.validated_data['resume'] = applied_resume
+            viewed_applied_resume = serializer.save()
+            assign_perm("view_viewedappliedresume" , user , viewed_applied_resume)
+            return Response(data={"success" : True , "detail" : "resume added to viewed resume that are applied to employer"} , status=HTTP_200_OK)
+        
+        return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)        
 
 
 

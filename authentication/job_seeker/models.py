@@ -80,7 +80,7 @@ class Resume(models.Model) :
         
         
         
-    job_seeker = models.ForeignKey(JobSeeker , on_delete=models.CASCADE , related_name='resume')
+    job_seeker = models.OneToOneField(JobSeeker , on_delete=models.CASCADE)
     file = models.FileField(upload_to='resumes/' , null=True , blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -76,11 +76,17 @@ class EmployerOrderItem(models.Model) :
     added_at = models.DateTimeField(auto_now_add=True)
 
 
-class ViewedResume (models.Model) :
+class ViewedResume(models.Model) :
     resume = models.ForeignKey("job_seeker.Resume" , on_delete=models.CASCADE) 
     employer = models.ForeignKey("employer.Employer" , on_delete=models.CASCADE)
+    seen_at = models.DateTimeField(auto_now_add=True)
     
-
+class ViewedAppliedResume(models.Model) :
+    resume = models.ForeignKey('job_seeker.Resume' , on_delete=models.CASCADE)
+    job_offer = models.ForeignKey("employer.JobOpportunity" , on_delete=models.CASCADE)
+    seen_at = models.DateTimeField(auto_now_add=True)
+    
+    
 
 class InterviewSchedule(models.Model) :
     class InterViewStatus(models.TextChoices) :

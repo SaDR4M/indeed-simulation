@@ -12,6 +12,7 @@ urlpatterns = [
     path('change-package-price/' , views.ChangePackagePrice.as_view() , name="change_package_price"),
     path('job-applies/' , views.ResumesForOffer.as_view() , name="resume_applies"),
     path('view-resume/' , views.ResumeViewer.as_view() , name="view_resume"),
+    path('view-apply-resume/' , views.AppliedResumeViewer.as_view() , name='view_apply_resume'),
     path('change-apply-status/' , views.ChangeApplyStatus.as_view() , name="change_apply_status"),
     path('employer-interview-schedule/' , views.EmployerInterviewSchedule.as_view() , name="schedule_time"),
     path('cart/' , views.Cart.as_view() , name="cart"),

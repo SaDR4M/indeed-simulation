@@ -277,25 +277,30 @@ class ApplyForJob(APIView):
         # check that user is asign to job seeker
         job_seeker = utils.job_seeker_exists(user)
         if not job_seeker :
-            return Response(data={"detail" : "there is no job seeker asign to this user"} , status=status.HTTP_404_NOT_FOUND)
+            return Response(data={"error" : "there is no job seeker asign to this user"} , status=status.HTTP_404_NOT_FOUND)
+        offer_id  = request.data.get('offer_id') 
+        if not offer_id :
+            return Response(data={"error" : "offer_id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+        
+        
 
         serializer = ApplicationSerializer(data=request.data)
         
         if serializer.is_valid() :
             data = serializer.validated_data
-            job_opportunity_pk = data['id']
             try :
-                job_opportunity = JobOpportunity.objects.get(pk=job_opportunity_pk , status="approved")
+                job_opportunity = JobOpportunity.objects.get(pk=offer_id , status="approved")
             except JobOpportunity.DoesNotExist :
-                return Response(data={"detail"  : "job opportunity does not exist"})
+                return Response(data={"error"  : "job opportunity does not exist"})
             
             apply = Application.objects.filter(job_seeker=job_seeker , job_opportunity=job_opportunity)
             
             if apply.exists() : 
-                return Response(data={"detial" : "job seeker applied for this job before"} , status=status.HTTP_400_BAD_REQUEST)
+                return Response(data={"error" : "job seeker applied for this job before"} , status=status.HTTP_400_BAD_REQUEST)
             
             data['job_seeker'] = job_seeker
             data['job_opportunity'] = job_opportunity
+   
             application = serializer.save()
             # assign the permission to view/delete the offer later
             assign_perm('view_application' , user , application)
@@ -791,7 +796,7 @@ class AllJobSeekers(APIView , JobSeekerFilterMixin) :
         if isinstance(filtered_jobseekers , Response) :
             return filtered_jobseekers   
 
-        # paginate the data
+        # paginate the dataA
         paginator = LimitOffsetPagination()
         paginator.paginate_queryset(filtered_jobseekers , request)
         

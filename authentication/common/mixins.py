@@ -93,6 +93,6 @@ class CreationTimeFilterMixin:
             model_field = filter_match['model_field']
             lookup = filter_match['lookup']
             
-            query &= Q(**{f"{model_field}__date__{lookup}" : value})
+            query &= Q(**{f"{model_field}__{lookup}" : value})
             
             return query

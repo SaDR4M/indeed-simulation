@@ -31,7 +31,6 @@ class GetResumeSerializer(serializers.ModelSerializer) :
 
 
 class ApplicationSerializer(serializers.ModelSerializer):
-    id = serializers.CharField(required=True)
     class Meta:
         model = Application
         exclude = ['job_seeker' , 'job_opportunity' , 'status']

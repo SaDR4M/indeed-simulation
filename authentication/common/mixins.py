@@ -80,9 +80,9 @@ class GenderFilterMixin:
                 
 class CreationTimeFilterMixin:
     creation_time_filter_allow_list = {
-        "created_at" : {"model_field" : "created_at" , "lookup" : "exact"},
-        "created_min" : {"model_field" : "created_at" , "lookup" : "gte"},
-        "created_max" : {"model_field" : "created_at" , "lookup" : "lte"}
+        "created_at" : {"model_field" : "created_at__date" , "lookup" : "exact"},
+        "min_created_at" : {"model_field" : "created_at__date" , "lookup" : "gte"},
+        "max_created_at" : {"model_field" : "created_at__date" , "lookup" : "lte"}
     }
     
     

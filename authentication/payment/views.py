@@ -71,8 +71,9 @@ class PaymentProcess(APIView) :
                 payment = serializer.save(employer=employer , amount=amount , authority=authority , payment_id=payment_id)
                 assign_perm("view_payment" , user , payment)
     
-                # create order and order item base on the items in the employer cart and if it was successfull the cart status will be False
+                # create order and order item base on the items in the employer cart and if the payment is successfull the cart status will be False
                 # get the items in the cart
+                # TODO optimize the query with prefetch related
                 try :
                     cart = EmployerCart.objects.get(employer=employer , active=True)
                 except EmployerCart.DoesNotExist :
@@ -148,3 +149,8 @@ class PaymentProcess(APIView) :
 
 
 
+class Test(APIView):
+    
+    def get(self , request) :
+
+        return Response(status=status.HTTP_200_OK)

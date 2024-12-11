@@ -28,22 +28,30 @@ def fail_payment_if_unpaid(self, payment_id, retry_count=0):
             order.save()
             payment.save()
             user = payment.employer.user
+            # ADD the order items packages to the PURCHASED PACKAGES
+            try :
+                payment = Payment.objects.prefetch_related("order__order_items__package").get(pk=payment_id)
+                order_items = payment.order.order_items.all()
+                for item in order_items :
+                    purchase_package = PurchasedPackage.objects.create(package=item.package , employer=payment.employer , payment=payment )
+                    assign_perm("view_purchasedpackage" , user , purchase_package)
+            except KeyError as e:
+                return f"Something happend while getting packages of the order error :{e}"
+   
+           
             order_id = order.order_id
+            # TODO the order email is not working fix it
             if user.phone :
                 # send sms for the order
-                message = Message.objects.create(phone=user.phone ,type="order" , kind="sms")
+                message = Message.objects.create(phone=user.phone , type="order" , kind="sms")
                 send_order_sms.apply_async(args=[user.phone , order_id , message.pk])
-            if user.email : 
+            elif user.email : 
                 # send email for the order 
-                message = Message.objects.create(email=user.email ,type="order" , kind="email")
+                message = Message.objects.create(email=user.email , type="order" , kind="email")
                 send_order_email.apply_async(args=[user.email , order_id , message.pk])
-            # adding purchased package
-            items = order.order_items.all()
-            for item in items :
-                purchase_package = PurchasedPackage.objects.create(package=item.package , employer=payment.employer , payment=payment )
-                assign_perm("view_purchasepackage" , user , purchase_package)
+
                 
-        return "completed"
+            return "completed"
 
     # Handle retries
     if retry_count < self.max_retries :

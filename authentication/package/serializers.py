@@ -10,11 +10,10 @@ from payment.models import Payment
 
 
 class PackageSerializer(serializers.ModelSerializer) :
-    created_at = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S' , required=False)
     class Meta :
         model = Package
         exclude = ['user']
-        read_only = ['id']
+        read_only = ['id' , 'created_at']
         
     def validate(self , attrs) : 
         
@@ -36,6 +35,13 @@ class PackageSerializer(serializers.ModelSerializer) :
         # if package > 1 :
         #     raise ValidationError("with this count you can only have on active package , deactive the other packages to register this package")
         return attrs
+
+class GetPackageSerializer(serializers.ModelSerializer) :
+    class Meta :
+        model = Package
+        fields = '__all__'
+
+
 
 class PurchasePackageSerializer(serializers.ModelSerializer) :
     package = serializers.PrimaryKeyRelatedField(queryset=Package.objects.all())

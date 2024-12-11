@@ -72,7 +72,7 @@ class EmployerOrder(models.Model) :
 
 class EmployerOrderItem(models.Model) :
     order = models.ForeignKey(EmployerOrder , on_delete=models.CASCADE , related_name="order_items")
-    package = models.ForeignKey("package.Package" , on_delete=models.CASCADE)
+    package = models.ForeignKey("package.Package" , on_delete=models.CASCADE , related_name="packages")
     added_at = models.DateTimeField(auto_now_add=True)
 
 

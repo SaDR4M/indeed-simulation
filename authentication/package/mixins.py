@@ -13,11 +13,8 @@ from common.mixins import CreationTimeFilterMixin
 
 class FilterPackageMixin(CreationTimeFilterMixin) :
     
-    
-    
-    def filter_package(self , packages) : 
-        package_filter_allow_list = {
-            **self.creation_time_filter_allow_list,
+    package_filter_allow_list = {
+            **CreationTimeFilterMixin.creation_time_filter_allow_list,
             "price" : {"model_field" : "price" , "lookup" : "exact"},
             "min_price" : {"model_field" : "price" , "lookup" : "gte"},
             "max_price" : {"model_field" : "price" , "lookup" : "lte"},
@@ -30,13 +27,15 @@ class FilterPackageMixin(CreationTimeFilterMixin) :
             "deleted_at" : {"model_field" : "deleted_at__date" , "lookup" : "exact"},
             "min_deleted_at" : {"model_field" : "deleted_at__date" , "lookup" : "gte"},
             "max_deleted_at" : {"model_field" : "deleted_at__date" , "lookup" : "lte"}
-        }    
+    }
+        
+    def filter_package(self , packages) : 
         
         query = Q()
         parameters = self.request.query_params
         
         for parameter,value in parameters.items() :
-            field_match = package_filter_allow_list.get(parameter)
+            field_match = self.package_filter_allow_list.get(parameter)
             if not field_match :
                 return Response(data={"error" : f"{parameter} is not valid"} , status=status.HTTP_400_BAD_REQUEST)        
             

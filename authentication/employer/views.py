@@ -313,6 +313,24 @@ class Order(APIView , FilterOrderMixin) :
     @swagger_auto_schema(
         operation_summary="get orders data of the employer",
         operation_description="get the list of orders ",
+        manual_parameters=[            
+        openapi.Parameter(name='order_at' , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the orders with EXACT order_at date "),
+        openapi.Parameter(name='min_order_at' , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the orders with MIN order_at date "),
+        openapi.Parameter(name='max_order_at' , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the orders with MAX order_at date "),
+        openapi.Parameter(name="price" , in_=openapi.IN_QUERY , type=openapi.TYPE_NUMBER , description="get the orders with EXACT package price (for having range price you must define max and min price together)"),
+        openapi.Parameter(name="min_price" , in_=openapi.IN_QUERY , type=openapi.TYPE_NUMBER , description="get the orders with MIN package price (lte)"),
+        openapi.Parameter(name="max_price" , in_=openapi.IN_QUERY , type=openapi.TYPE_NUMBER , description="get the orders with MAX package price (gte)"),
+        openapi.Parameter(name="active" , in_=openapi.IN_QUERY , type=openapi.TYPE_BOOLEAN , description="get the orders with EXACT package type . options are True , False"),
+        openapi.Parameter(name="count" , in_=openapi.IN_QUERY , type=openapi.TYPE_INTEGER , description="get the orders with EXACT package count"),
+        openapi.Parameter(name="type" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the orders with EXACT package type. options are : 'offer' , 'resume' "),
+        openapi.Parameter(name="priority" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the orders with EXACT package priority. options are : 'normal' , 'urgent' "),
+        openapi.Parameter(name="created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING, description="get the orders with this EXACT package created date time (for having range date time you must define max and min created date time together)"),
+        openapi.Parameter(name="min_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the orders with MIN package created date time (lte)"),
+        openapi.Parameter(name="max_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the orders with MAX package created date time (gte)"),
+        openapi.Parameter(name="deleted_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING, description="get the orders with this EXACT package deleted date time (for having range date time you must define max and min deleted date time together)"),
+        openapi.Parameter(name="min_deleted_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the orders with MIN package deleted date time (lte)"),
+        openapi.Parameter(name="max_deleted_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the orders with MAX package deleted date time  (gte)"),
+        ],
         responses={
             200: OrderSerializer,
             404: "employer/order was not found",
@@ -337,11 +355,7 @@ class Order(APIView , FilterOrderMixin) :
             'order_items__package'  #
         ).order_by('order_at')
         
-        # if not orders.exists():
-        #     return Response(data={"detail": "Order does not exist"}, status=HTTP_404_NOT_FOUND)
-        
         # serialize the orders
-        # TODO add the package filterign to the order
         data = []
         for order in orders:
 
@@ -361,21 +375,21 @@ class Order(APIView , FilterOrderMixin) :
         return Response(data={"data": data}, status=HTTP_200_OK)
 
 
-    @swagger_auto_schema(
-        operation_summary="create order",
-        operation_description="create order and order items for the items in the active cart and the payment is 'completed' ",
-        request_body = openapi.Schema(type=openapi.TYPE_OBJECT,properties={"package_id" : openapi.Schema(type=openapi.TYPE_STRING, description="package id")} , required=['package_id']),
-        responses={
-            200: "successfully",
-            400: "invalid parameters",
-            404: "employer/cart/cart item was not found",
-            403: "user doesn't have permission to change this data",
-        },
-        security=[{"Bearer": []}]
-    )
+    # @swagger_auto_schema(
+    #     operation_summary="create order",
+    #     operation_description="create order and order items for the items in the active cart and the payment is 'completed' ",
+    #     request_body = openapi.Schema(type=openapi.TYPE_OBJECT,properties={"package_id" : openapi.Schema(type=openapi.TYPE_STRING, description="package id")} , required=['package_id']),
+    #     responses={
+    #         200: "successfully",
+    #         400: "invalid parameters",
+    #         404: "employer/cart/cart item was not found",
+    #         403: "user doesn't have permission to change this data",
+    #     },
+    #     security=[{"Bearer": []}]
+    # )
 
-    def post(self , request):
-        pass
+    # def post(self , request):
+    #     pass
         # user = request.user
         # employer = utils.employer_exists(user)
         # if not employer :
@@ -742,7 +756,13 @@ class AllResumes(APIView , FilterResumeMixin) :
         if not employer :
             return Response(data={"detail" : "Employer does not exists"} , status=HTTP_404_NOT_FOUND)
 
-        resumes = Resume.objects.all()
+        # EXCLUCDE resumes that employer seen it before
+        viewed_resumes = list(ViewedResume.objects.filter(employer=employer).values_list('resume' , flat=True))
+        viewed_applied_resumes = list(ViewedAppliedResume.objects.filter(job_offer__employer=employer).values_list('resume' , flat=True))
+        # EXCLUCDE resumes that job seekers applied for the employers
+        applied_resumes = list(Application.objects.filter(job_opportunity__employer = employer).values_list('job_seeker__resume' , flat=True))
+        all_excluded_ids = set(viewed_resumes + viewed_applied_resumes + applied_resumes)
+        resumes = Resume.objects.exclude(id__in = all_excluded_ids)
         
         filtered_resume = self.filter_resume('resume' , resumes)
         # return response if there was any problem
@@ -872,8 +892,7 @@ class ResumeViewer(APIView , FilterResumeMixin) :
             resume = data['resume']
 
             # check if user have purchased packages or not
-            # TODO change package type to resume
-            purchased = PurchasedPackage.objects.filter(employer=employer , active=True , package__type="offer").order_by('bought_at')
+            purchased = PurchasedPackage.objects.filter(employer=employer , active=True , package__type="resume").order_by('bought_at')
             if not purchased.exists() :
                 return Response(data={"detail" : "employer does not have any purchased packages"})
             # check that the employer have this job offer or not
@@ -1026,26 +1045,42 @@ class AppliedResumeViewer(APIView , FilterResumeMixin) :
         apply_id = request.data.get('apply_id')
         if not apply_id :
             return Response(data={"error" : "apply_id must be entered"} , status=HTTP_400_BAD_REQUEST)
-        
-        try :
-            # not important to use prefetch related in this situation cause it is just one data 
-            apply = Application.objects.prefetch_related('job_seeker').get(pk=apply_id , job_opportunity__employer = employer)
-            applied_resume = apply.job_seeker.resume
-            job_offer = apply.job_opportunity
-            print(applied_resume)
-        except Application.DoesNotExist :
-            return Response(data={"error" : "job apply does not exists"} , status=HTTP_404_NOT_FOUND)
 
-        # check that employer viewed this resume for the apply before or not
-        viewed_applied_resume = ViewedAppliedResume.objects.filter(job_offer = job_offer, resume = applied_resume)
-        if viewed_applied_resume.exists() :
-            return Response(data={"error" : "employer viewed this resume before"} , status=HTTP_400_BAD_REQUEST)
         
         serializer = AppliedViewedResumeSerializer(data=request.data)
         if serializer.is_valid() :
+                    
+            try :
+                # not important to use prefetch related in this situation cause it is just one data 
+                apply = Application.objects.prefetch_related('job_seeker').get(pk=apply_id , job_opportunity__employer = employer)
+                applied_resume = apply.job_seeker.resume
+                job_offer = apply.job_opportunity
+                print(applied_resume)
+            except Application.DoesNotExist :
+                return Response(data={"error" : "job apply does not exists"} , status=HTTP_404_NOT_FOUND)
+
+            purchased = PurchasedPackage.objects.filter(employer=employer , active=True , package__type="resume").order_by('bought_at')
+            if not purchased.exists() :
+                return Response(data={"detail" : "employer does not have any purchased packages"})
+                
+                
+            # check that employer viewed this resume for the apply before or not
+            viewed_applied_resume = ViewedAppliedResume.objects.filter(job_offer = job_offer, resume = applied_resume)
+            if viewed_applied_resume.exists() :
+                return Response(data={"error" : "employer viewed this resume before"} , status=HTTP_400_BAD_REQUEST)
+            
+            
+            
             serializer.validated_data['job_offer'] = job_offer
             serializer.validated_data['resume'] = applied_resume
             viewed_applied_resume = serializer.save()
+            message = Message.objects.create(type="resume" , kind="email"  , email=user.email)
+            tasks.send_resume_status.apply_async(args=[apply.pk , message.pk])
+            # minus from the remaining
+            purchased_instance = purchased.first()
+            new_remaining = purchased_instance.remaining - 1
+            purchased_instance.remaining = new_remaining
+            purchased_instance.save()
             assign_perm("view_viewedappliedresume" , user , viewed_applied_resume)
             return Response(data={"success" : True , "detail" : "resume added to viewed resume that are applied to employer"} , status=HTTP_200_OK)
         

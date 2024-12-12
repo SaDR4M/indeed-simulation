@@ -14,3 +14,8 @@ class PaymentSerializer(serializers.ModelSerializer) :
         exclude = ['employer' , 'authority' , 'payment_id' , 'amount']
     
         
+class GetPaymentSerializer(serializers.ModelSerializer) :
+    
+    class Meta:
+        model = Payment
+        fields = '__all__'

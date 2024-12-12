@@ -10,13 +10,14 @@ from employer.models import EmployerCart
 from celery.result import AsyncResult
 from drf_yasg import openapi
 # local imports
-from .serializers import PaymentSerializer
+from .serializers import PaymentSerializer , GetPaymentSerializer
 from employer.models import Employer
 from employer.utils import employer_exists
 from . import utils
+from .mixins import FitlerPaymentMixin
 from .utils import verify_payment
 from . import tasks
-from employer.models import EmployerCart , EmployerOrder , EmployerCartItem , EmployerOrderItem
+from employer.models import EmployerCart , EmployerOrder , EmployerCartItem , EmployerOrderItem 
 from employer.serializers import OrderSerializer , OrderItemSerializer
 from account.models import Message
 from account.tasks import send_order_sms ,  send_order_email
@@ -148,9 +149,45 @@ class PaymentProcess(APIView) :
         return Response(data={"success" : True , "fa_data" : "پرداخت موفق"} , status=status.HTTP_200_OK)
 
 
-
-class Test(APIView):
-    
+class Payments(APIView , FitlerPaymentMixin):
+    """get the list of employer payment"""
+    @swagger_auto_schema(
+        operation_summary="get the list of employer payment",
+        operation_description="get the payment of employers with filtering",
+        manual_parameters=[
+            openapi.Parameter(name="authority" , in_=openapi.IN_QUERY ,  type=openapi.TYPE_STRING , description="get the payment that CONTAIN the authority"),
+            openapi.Parameter(name="amount" , in_=openapi.IN_QUERY ,  type=openapi.TYPE_STRING , description="get the payment that have EXACT amount"),
+            openapi.Parameter(name="min_amount" , in_=openapi.IN_QUERY ,  type=openapi.TYPE_STRING , description="get the payment that have MIN amount"),
+            openapi.Parameter(name="max_amount" , in_=openapi.IN_QUERY ,  type=openapi.TYPE_STRING , description="get the payment that have MAX amount"),
+            openapi.Parameter(name="checkout_at" , in_=openapi.IN_QUERY ,  type=openapi.TYPE_STRING , description="get the payment that have EXACT checkout date"),
+            openapi.Parameter(name="min_checkout_at" , in_=openapi.IN_QUERY ,  type=openapi.TYPE_STRING , description="get the payment that have MIN checkout date"),
+            openapi.Parameter(name="max_checkout_at" , in_=openapi.IN_QUERY ,  type=openapi.TYPE_STRING , description="get the payment that have MAX checkout date"),
+            openapi.Parameter(name="payment_id" , in_=openapi.IN_QUERY ,  type=openapi.TYPE_BOOLEAN , description="get the payment that CONTAIN payment_id"),
+            openapi.Parameter(name="status" , in_=openapi.IN_QUERY ,  type=openapi.TYPE_BOOLEAN , description="get the payment with the EAXACT the authority"),
+        ],
+        responses={
+            200 : GetPaymentSerializer,
+            400 : "invalid parameters",
+            403 : "user does not have permission",
+            404 : "employer was not found"
+        }
+    )
     def get(self , request) :
+        
+        user = request.user
+        employer = employer_exists(user)
+        if not employer :
+            return Response(data={"error" : "employer does not exists"} , status=status.HTTP_404_NOT_FOUND)
+        
+        payments = Payment.objects.filter(employer=employer)
 
-        return Response(status=status.HTTP_200_OK)
+        filtered_data = self.filter_payment(payments)
+        if isinstance(filtered_data , Response) :
+            return filtered_data
+
+        for data in filtered_data :
+            if not user.has_perm("view_payment" , data) :
+                return Response(data={"error" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = GetPaymentSerializer(filtered_data , many=True)
+        return Response(data={"data" : serializer.data} , status=status.HTTP_200_OK)

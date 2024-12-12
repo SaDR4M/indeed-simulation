@@ -56,4 +56,7 @@ class PurchasePackageSerializer(serializers.ModelSerializer) :
             raise ValidationError("the payment does not belong to the user")
         return attr
     
- 
+class GetPurchasedPackageSerializer(serializers.ModelSerializer) :
+    class Meta :
+        model = PurchasedPackage
+        fields = '__all__'

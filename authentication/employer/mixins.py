@@ -398,3 +398,50 @@ class FilterOrderMixin(FilterPackageMixin):
         return orders.filter(query)
             
 
+
+# TODO ADD THIS TO COMMONS
+class FilterInterviewScheduleMixin(CreationTimeFilterMixin) :
+    
+    interview_schedule_filter_allow_list = {
+        
+        **CreationTimeFilterMixin.creation_time_filter_allow_list,
+        "interview_time" : {"model_field" : "interview_time" , "lookup" : "exact"},
+        "min_interview_time" : {"model_field" : "interview_time" , "lookup" : "gte"},
+        "max_interview_time" : {"model_field" : "interview_time" , "lookup" : "lte"},
+        "status" : {"model_field" : "status" , "lookup" : "exact"},  
+    }
+    
+    
+    
+    
+    def filter_interview(self , interview_schedule)  :
+        
+        parameters = self.request.query_params
+        query = Q()
+        or_query = Q()
+        
+        for parameter,value in parameters.items() :
+            filter_match = self.interview_schedule_filter_allow_list.get(parameter)
+            if not filter_match :
+                return Response(data={"error" : f"{filter_match} not valid"} , status=status.HTTP_400_BAD_REQUEST)
+            
+            field = filter_match['model_field']
+            lookup = filter_match['lookup']
+            
+            if parameter == "status"  :
+                values = value.split(',')
+                for value in values :
+                    or_query |= Q(**{f"{field}__{lookup}" : value}) 
+            else :
+                query &= Q(**{f"{field}__{lookup}" : value})
+                
+        query &= or_query        
+        
+        return interview_schedule.filter(query)
+            
+            
+            
+            
+            
+            
+            

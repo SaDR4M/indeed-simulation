@@ -4,7 +4,7 @@ from rest_framework.validators import ValidationError
 from rest_framework import serializers
 
 # local import
-from employer.models import Employer, JobOpportunity, ViewedResume, EmployerCartItem, EmployerCart, EmployerOrder, EmployerOrderItem ,InterviewSchedule , ViewedAppliedResume
+from employer.models import Employer, JobOpportunity, ViewedResume, EmployerCartItem, EmployerCart, EmployerOrder, EmployerOrderItem  , InterviewSchedule, ViewedAppliedResume
 from package.models import Package
 from job_seeker.models import Resume , Application 
 

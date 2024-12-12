@@ -23,7 +23,6 @@ class JobSeekerFilterMixin(GenderFilterMixin , LocationFilterMixin  , CreationTi
             "birthday_min" : {"model_field" : "birthday" , "lookup" : "gte"},
             "birthday_max" : {"model_field" : "birthday" , "lookup" : "lte"},
         }
-        print(jobseeker_filter_allow_lost)
         
         parameters = self.request.query_params
         query = Q()
@@ -50,3 +49,82 @@ class JobSeekerFilterMixin(GenderFilterMixin , LocationFilterMixin  , CreationTi
         
         
         return  jobseekers.filter(query)
+    
+
+
+class FilterTestMixin(CreationTimeFilterMixin) :
+    
+    test_filter_allow_list = {
+        **CreationTimeFilterMixin.creation_time_filter_allow_list,
+        "title" : {"model_field" : "title" , "lookup" : "icontains"},
+        "kind" : {"model_field" : "kind" , "lookup"  : "exact"},
+        # "publish" : {"model_field" : "publish" , "lookup" : "exact"},
+        # "active" : {"model_field" : "active" , "lookup" : "exact"}
+        "count" : {"model_field" : "count" , "lookup" : "exact"},
+        "min_count" : {"model_field" : "count" , "lookup"  : "gte"},
+        "max_count" : {"model_field" : "count" , "lookup" : "lte"},
+        "deleted_at" : {"model_field" : "deleted_at" , "lookup" : "exact"},
+        "min_deleted_at" : {"model_field" : "deleted_at" , "lookup" : "gte"},
+        "max_deleted_at" : {"model_field" : "deleted_at" , "lookup" : "lte"}
+    }
+    
+    
+    def filter_test(self , tests) :
+        
+        parameters = self.request.query_params
+        query = Q()
+        or_query = Q()
+        
+        
+        for parameter,value in parameters.items():
+            filter_match = self.test_filter_allow_list.get(parameter)
+            if not filter_match :
+                return Response(data={"error" : f"{parameter} is not valid"} , status=status.HTTP_400_BAD_REQUEST)
+            
+            # later if the kind have more fields
+            
+            field = filter_match['model_field']
+            lookup = filter_match['lookup']
+            
+            if parameter == "kind" :
+                values = value.split(',')
+                for value in values :
+                    or_query |= Q(**{f"{field}__{lookup}" : value})
+            else :
+                query &= Q(**{f"{field}__{lookup}" : value})
+             
+        query &= or_query     
+           
+        return tests.filter(query)
+    
+    
+class FilterQuestionMixin(CreationTimeFilterMixin) :
+    question_filter_allow_list = {
+        **CreationTimeFilterMixin.creation_time_filter_allow_list,
+        "question" : {"model_field" : "question" , "lookup" : "icontains"},
+        "answer" : {"model_field" : "answer" , "lookup" : "icontains"},
+        "score" : {"model_field" : "score" , "lookup" : "exact"},
+        "min_score" : {"model_field" : "score" , "lookup" : "gte"},
+        "max_score" : {"model_field" : "score" , "lookup" : "lte"},
+        # "active" : {"model_field" : "active" , "lookup" : "exact"}
+        "deleted_at" : {"model_field" : "deleted_at" , "lookup" : "exact"},
+        "min_deleted_at" : {"model_field" : "deleted_at" , "lookup" : "gte"},
+        "max_deleted_at" : {"model_field" : "deleted_at" , "lookup" : "lte"}
+    }
+    
+    
+    def filter_question(self , questions) :
+        
+        parameters = self.request.query_params
+        query = Q()
+        
+        for parameter,value in parameters.items() :
+            filter_match = self.question_filter_allow_list.get(parameter)
+            if not filter_match :
+                return Response(data={"error" : f"{parameter} is not valid"})
+            field = filter_match['model_field']
+            lookup = filter_match['lookup']
+            
+            query &= Q(**{f"{field}__{lookup}" : value})
+                        
+        return questions.filter(query)

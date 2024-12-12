@@ -11,15 +11,14 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework.pagination import LimitOffsetPagination
 # local imports
 from employer.models import JobOpportunity
-from .models import JobSeeker, Resume , Application , Test , QuestionAndAnswers
-from .serializers import JobSeekerSerializer, ResumeSerializer , ApplicationSerializer , TestSerializer , QuestionAndAnswersSerializer , GetResumeSerializer , GetJobSeekerSerialzier
+from .models import JobSeeker, Resume , Application , Test , Question , Answer
+from .serializers import JobSeekerSerializer, ResumeSerializer , ApplicationSerializer , TestSerializer , GetResumeSerializer , GetJobSeekerSerialzier , ChangeInterviewJobSeekerScheduleSerializer , QuestionSerializer , AnswerSerializer
 from account.models import User
 from . import utils
-from .serializers import ChangeInterviewJobSeekerScheduleSerializer
 from employer.serializers import InterviewScheduleSerializer
-from employer.models import InterviewSchedule    
-from employer.mixins import InterviewScheduleMixin , CountryCityIdMixin
-from job_seeker.mixins import JobSeekerFilterMixin
+from employer.models import InterviewSchedule  
+from employer.mixins import InterviewScheduleMixin, FilterInterviewScheduleMixin , CountryCityIdMixin 
+from job_seeker.mixins import JobSeekerFilterMixin , FilterTestMixin , FilterQuestionMixin
 # Create your views here.
 
 class JobSeekerRegister(APIView , CountryCityIdMixin) :
@@ -361,7 +360,7 @@ class AppliesForJob(APIView):
     
 
     
-class JobSeekerInterviewSchedule(APIView , InterviewScheduleMixin) : 
+class JobSeekerInterviewSchedule(APIView , InterviewScheduleMixin , FilterInterviewScheduleMixin) : 
     @swagger_auto_schema(
         operation_summary="list of job seeker interview schedules",
         operation_description="job seekers can get their own schedule",
@@ -380,7 +379,16 @@ class JobSeekerInterviewSchedule(APIView , InterviewScheduleMixin) :
             return Response(data={"error" : "employer does not exists"} ,status=status.HTTP_404_NOT_FOUND )
         # get the schedule base on employer
         interviews = InterviewSchedule.objects.filter(apply__job_seeker = job_seeker ).exclude(status__in = ["rejected_by_employer" , "rejected_by_jobseeker"])
-        serializer = InterviewScheduleSerializer(interviews , many=True)
+        
+        for interview in interviews :
+            if not user.has_perm("view_interviewschedule",interview):
+                return Response(data={"error" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
+        
+        filtered_data = self.filter_interview(interviews)
+        if isinstance(filtered_data , Response) :
+            return filtered_data
+        
+        serializer = InterviewScheduleSerializer(filtered_data , many=True)
         return Response(data={"data" : serializer.data} , status=status.HTTP_200_OK)
     
     
@@ -479,16 +487,14 @@ class ParticapteTest(APIView) :
     
         resume.test.add(test)
         
-        serializer = QuestionAndAnswersSerializer(questions , many=True)
+        serializer = QuestionSerializer(questions , many=True)
         return Response(data={"success" : "True" , "data" : serializer.data} , status=status.HTTP_200_OK)
         
     
            
         
-        
-        
-class AnswerQuestion(APIView) :
-    
+class Questions(APIView) : 
+    """get all the test questions"""
     def get(self , request) :
         
         user = request.user
@@ -505,46 +511,79 @@ class AnswerQuestion(APIView) :
         except Test.DoesNotExist :
             return Response(data={"error" : "test does not exists"} , status=status.HTTP_404_NOT_FOUND)
         
-        qa = QuestionAndAnswers.objects.filter(user=user  , test=test)
-        if not qa :
-            return Response(data={"error" : "there is no quesiton/answer"} , status=status.HTTP_404_NOT_FOUND)
+        q = Question.objects.filter(test=test , active=True)
+        if not q:
+            return Response(data={"error" : "there is no quesiton for this test"} , status=status.HTTP_404_NOT_FOUND)
         
-        serializer = QuestionAndAnswersSerializer(qa , many=True)
-        return Response(data={"data" : serializer.data }, status=status.HTTP_200_OK)
-          
+        serializer = QuestionSerializer(q , many=True)
+        return Response(data={"data" : serializer.data }, status=status.HTTP_200_OK)          
+        
+        
+class AnswerQuestion(APIView) :
     
-    def post(self , request) :
+    def get(self , request) :
+        """get the answers for the question for the *user* """
         user = request.user
         job_seeker =  utils.job_seeker_exists(user)
         if not job_seeker:
-            return Response(data={"error" : "job seeker does not exists"} , status=status.HTTP_404_NOT_FOUND)
-        
-
+            return Response(data={"error" : "job seeker does not exists"} , status=status.HTTP_400_BAD_REQUEST)
         
         question_id = request.data.get('question_id')
         if not question_id :
             return Response(data={"error" : "question_id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
         
         try :
-            qa = QuestionAndAnswers.objects.get(pk=question_id , active=True)
-        except QuestionAndAnswers.DoesNotExist :
-            return Response(data={"error" : "question does not exists"} , status=status.HTTP_404_NOT_FOUND)
+            q = Question.objects.get(pk=question_id, active=True)
+        except Question.DoesNotExist :
+            return Response(data={"error" : "question does not exists"} , status=status.HTTP_400_BAD_REQUEST)
         
-        if qa.user == user or qa.answer :
-            return Response(data={"error" : "you have answered this question before" })
+        # just the answers that user has permission
+        answers = Answer.objects.filter(question=q)
+        answers_with_permission = get_objects_for_user(user , ['view_answer'] , answers , accept_global_perms=True)
         
-        answer = request.data.get('answer')
-        if not answer :
-            return Response(data={"error" : "answer must be entered" } , status=status.HTTP_400_BAD_REQUEST)
-        
+        serializer = AnswerSerializer(answers_with_permission , many=True)
+        return Response(data={"data" : serializer.data }, status=status.HTTP_200_OK)
+          
+    """answer the question the test that user participated"""
+    def post(self , request) :
+        user = request.user
+        # did not use the utils to get the resume from the job seeker
         try :
-            Resume.objects.filter(test=qa.test , job_seeker=job_seeker)
-        except :
-            return Response(data={"error" : "there was an error occured"} , status=status.HTTP_400_BAD_REQUEST)
+            job_seeker = JobSeeker.objects.get(user=user)
+            tests = job_seeker.resume.test.all()
+            print(tests)
+        except JobSeeker.DoesNotExist :
+            return Response(data={"errpr" : "job seeker does not exists"} , status=status.HTTP_404_NOT_FOUND)
+
         
-        serializer = QuestionAndAnswersSerializer(qa , data=request.data , partial=True)
+        question_id = request.data.get('question_id')
+        if not question_id :
+            return Response(data={"error" : "question_id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+        # get the question that is active and published
+        try :
+            q = Question.objects.get(pk=question_id, active=True , test__publish = False)
+            print(q)
+            test = q.test
+            print(test)
+        except Question.DoesNotExist :
+            return Response(data={"error" : "question does not exists"} , status=status.HTTP_400_BAD_REQUEST)
+        # check that user has answer this question before or not
+        a = Answer.objects.filter(question=q , user=user)
+        if a.exists() :
+            return Response(data={"error" : "you have answered this question before"} , status=status.HTTP_400_BAD_REQUEST)
+
+        # check that user has participate the test or not
+        if not test in tests :
+            return Response(data={"error" : "must participate the test to answer the question"} , status=status.HTTP_400_BAD_REQUEST)
+    
+        # check that user has particapte the test or not 
+        serializer = AnswerSerializer(data=request.data)
         if serializer.is_valid() :
-            serializer.save()
+            serializer.validated_data['user'] = user
+            serializer.validated_data['question'] = q 
+            answer = serializer.save()
+            assign_perm("view_answer" , user , answer)
+            assign_perm('change_answer' , user , answer)
             return Response(data={"success" : True , "data" : serializer.data} , status=status.HTTP_200_OK)
         
         return Response(data={"errors" : serializer.errors} , status=status.HTTP_400_BAD_REQUEST)
@@ -569,19 +608,46 @@ class AnswerQuestion(APIView) :
 
 # TODO add this to admin app
 # TODO refactor the code
+# TODO DOCUMENT
 # admin only for job seekers
-class MangeTest(APIView) :
-    # get this list of active/ non active test  s  
+class MangeTest(APIView , FilterTestMixin) :
+    """get the list of test with filtering"""
+    @swagger_auto_schema(
+        operation_summary="get the list of tests",
+        operation_description="get the list of test with filtering",
+        manual_parameters=[
+            openapi.Parameter(name='title' , type=openapi.TYPE_STRING , in_=openapi.IN_QUERY , description="get the tests that CONTAINS this title"),
+            openapi.Parameter(name='kind' , type=openapi.TYPE_STRING , in_=openapi.IN_QUERY , description="get the tests that EXACT this title"),
+            openapi.Parameter(name='count' , type=openapi.TYPE_INTEGER , in_=openapi.IN_QUERY , description="get the tests that EXACT this count"),
+            openapi.Parameter(name='min_count' , type=openapi.TYPE_STRING , in_=openapi.IN_QUERY , description="get the tests that MIN this count"),
+            openapi.Parameter(name='max_count' , type=openapi.TYPE_STRING , in_=openapi.IN_QUERY , description="get the tests that MAX this count"),
+            openapi.Parameter(name="created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING, description="get the tests with EXACT created_at date"),
+            openapi.Parameter(name="min_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the tests with MIN created_at date"),
+            openapi.Parameter(name="max_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the tests with MAX created_at date"),
+            openapi.Parameter(name="deleted_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING, description="get the tests with EXACT deleted_at date"),
+            openapi.Parameter(name="min_deleted_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the tests with MIN deleted_at date"),
+            openapi.Parameter(name="max_deleted_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the tests with MAX deleted_at date"),
+        ],
+        responses={
+            200 : "successful",
+            400 : "invalid paramters",
+            403 : "user does not have permission"
+        }
+    )
     def get(self , request) :
         user = request.user
         if not user.is_superuser :
             return Response(data={"error" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
         
         # get all test that user have permission on it to view it
-        active_test = Test.objects.filter(user = user , active=True)
-        tests = get_objects_for_user(user , ['view_test'] , active_test , accept_global_perms=True)
+        tests = Test.objects.all()
+        tests_permission = get_objects_for_user(user , ['view_test'] , tests , accept_global_perms=True)
         
-        serializer = TestSerializer(tests , many=True)
+        filtered_data = self.filter_test(tests_permission)
+        if isinstance(filtered_data , Response):
+            return filtered_data
+        
+        serializer = TestSerializer(filtered_data , many=True)
         
         return Response(data={"success" : True , "data" : serializer.data} , status=status.HTTP_200_OK)
     
@@ -665,30 +731,53 @@ class MangeTest(APIView) :
     
     
     
-class ManageQuestion(APIView) :
-    # get list of test question
+class ManageQuestion(APIView , FilterQuestionMixin) :
+    """get list of test question"""
+    @swagger_auto_schema(
+        operation_summary="get the list of tests",
+        operation_description="get the list of test with filtering",
+        manual_parameters=[
+            openapi.Parameter(name='question' , type=openapi.TYPE_STRING , in_=openapi.IN_QUERY , description="get the questions that CONTAINS this question(it means the question TEXT)"),
+            openapi.Parameter(name='answer' , type=openapi.TYPE_STRING , in_=openapi.IN_QUERY , description="get the questions that CONTAINS this answer"),
+            openapi.Parameter(name='score' , type=openapi.TYPE_INTEGER , in_=openapi.IN_QUERY , description="get the questions with this EXACT this score"),
+            openapi.Parameter(name='min_score' , type=openapi.TYPE_STRING , in_=openapi.IN_QUERY , description="get the questions that MIN this min_score"),
+            openapi.Parameter(name='max_score' , type=openapi.TYPE_STRING , in_=openapi.IN_QUERY , description="get the questions that MAX this max_score"),
+            openapi.Parameter(name="created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING, description="get the questions with EXACT created_at date"),
+            openapi.Parameter(name="min_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the questions with MIN created_at date"),
+            openapi.Parameter(name="max_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the questions with MAX created_at date"),
+            openapi.Parameter(name="deleted_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING, description="get the questions with EXACT deleted_at date"),
+            openapi.Parameter(name="min_deleted_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the questions with MIN deleted_at date"),
+            openapi.Parameter(name="max_deleted_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the questions with MAX deleted_at date"),
+        ],
+        responses={
+            200 : "successful",
+            400 : "invalid paramters",
+            403 : "user does not have permission"
+        }
+    )
     def get(self , request) :
+        """get the list of all questions with filter . for user to see all the questions like question bank"""
         user = request.user
         test_id = request.data.get('test_id')
-        
-        if not test_id :
-            return Response(data={"error" : "test_id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+    
         
         if not user.is_superuser :
             return Response(data={"error" : 'user does not have permission to do this action'} , status=status.HTTP_403_FORBIDDEN)
 
-        active_qa = QuestionAndAnswers.objects.filter(test=test_id , active=True)
-    
-        qa = get_objects_for_user(user , ['view_questionandanswer'] , active_qa , accept_global_perms=True)
+        q = Question.objects.filter(active=True)
         
+        filtered_data = self.filter_question(q)
+        if isinstance(filtered_data , Response) :
+            return filtered_data
         # if not qa :
         #     return Response(data={"data" : {}} , status=status)
         
-        serializer = QuestionAndAnswersSerializer(qa , many=True)
+        serializer = QuestionSerializer(filtered_data , many=True)
         return Response(data={"data" : serializer.data} , status=status.HTTP_200_OK)
     
     # add new question to the test
     def post(self , request) :
+        """create questions for tests"""
         user = request.user
         if not user.is_superuser :
             return Response(data={"error" : 'user does not have permission to do this action'} , status=status.HTTP_403_FORBIDDEN)
@@ -701,26 +790,24 @@ class ManageQuestion(APIView) :
             test = Test.objects.get(pk=test_id , active=True)
         except Test.DoesNotExist :
             return Response(data={"error" : "there is test with this data"  , "fa_error" : "آزمونی با این مشخصات وجود ندارد"} , status=status.HTTP_404_NOT_FOUND)
-        
- 
-            
-        
-        
-        serializer = QuestionAndAnswersSerializer(data=request.data)
+
+
+        serializer = QuestionSerializer(data=request.data)
         if serializer.is_valid() :
             serializer.validated_data['test'] = test   
             serializer.validated_data['user'] = user
             question = serializer.validated_data['question']
             
-            qa = QuestionAndAnswers.objects.filter(question=question  , active=True)
-            if qa.exists() :
+            q = Question.objects.filter(question__icontains=question  , active=True)
+            if q.exists() :
                 return Response(data={"error" : "there is active question"}  , status=status.HTTP_400_BAD_REQUEST)
 
-            qa = serializer.save()
+            q = serializer.save()
 
-            assign_perm("view_questionandanswers" , user , qa)
-            assign_perm("change_questionandanswers" , user , qa)
-            assign_perm("delete_questionandanswers" , user , qa)        
+            assign_perm("view_question" , user , q)
+            assign_perm("change_question" , user , q)
+            assign_perm("delete_question" , user , q)
+                    
             return Response(data={"success" : True , "data" : serializer.data})
         return Response(data={"errors" :serializer.errors} , status=status.HTTP_400_BAD_REQUEST)
         
@@ -738,18 +825,18 @@ class ManageQuestion(APIView) :
             return Response(data={"error" : "question_id must be entered" } , status=status.HTTP_400_BAD_REQUEST)
 
         try :
-            qa = QuestionAndAnswers.objects.get(pk=question_id , active=True ,  )
-        except QuestionAndAnswers.DoesNotExist :
+            q = Question.objects.get(pk=question_id , active=True ,  )
+        except Question.DoesNotExist :
             return Response(data={"error" : "there is question with this data"  , "fa_error" : "سوالی با این مشخصات وجود ندارد"} , status=status.HTTP_404_NOT_FOUND)
     
-        if user.has_perm("change_questionandanswer" , qa) :
+        if user.has_perm("change_question" , q) :
             return Response(dat={"error" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
 
         
         
-        serializer = QuestionAndAnswersSerializer(qa , data=request.data , partial=True)
+        serializer = QuestionSerializer(q , data=request.data , partial=True)
         if serializer.is_valid :
-            serializer.validated_data['test'] = qa.test
+            serializer.validated_data['test'] = q.test
             serializer.save()
 
             return Response(data={"success" : True} , status=status.HTTP_200_OK)
@@ -768,16 +855,16 @@ class ManageQuestion(APIView) :
             return Response(data={"error" : "question_id must be entered" } , status=status.HTTP_400_BAD_REQUEST)
           
         try :
-            qa = QuestionAndAnswers.objects.get(pk=question_id , active=True )
-        except QuestionAndAnswers.DoesNotExist :
+            q = Question.objects.get(pk=question_id , active=True )
+        except Question.DoesNotExist :
             return Response(data={"error" : "there is question with this data"  , "fa_error" : "سوالی با این مشخصات وجود ندارد"} , status=status.HTTP_404_NOT_FOUND)
 
-        if user.has_perm("delete_questionandanswer" , qa) :
+        if user.has_perm("delete_question" , q) :
             return Response(dat={"error" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
         
-        qa.deleted_at = datetime.datetime.now()
-        qa.active = False
-        qa.save()
+        q.deleted_at = datetime.datetime.now()
+        q.active = False
+        q.save()
         return Response(data={"success" : True} , status=status.HTTP_200_OK)
         
 

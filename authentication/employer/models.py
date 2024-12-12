@@ -95,6 +95,7 @@ class InterviewSchedule(models.Model) :
         REJECTED_BY_EMPLOYER = "rejected_by_employer"
         REJECTED_BY_JOBSEEKER = 'rejected_by_jobseeker'
         CONFLICT = "conflict"
+        
     apply = models.OneToOneField("job_seeker.Application" , on_delete=models.CASCADE , related_name="schedules")
     job_seeker_time = models.DateTimeField(null=True , blank=True)
     employer_time = models.DateTimeField(null=True , blank=True)

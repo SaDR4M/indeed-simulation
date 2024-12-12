@@ -48,14 +48,17 @@ class Test(TestStatusMixin) :
     count = models.IntegerField(default=10)
  
     
-class QuestionAndAnswers(TestStatusMixin) :
+class Question(TestStatusMixin) :
     test = models.ForeignKey(Test , on_delete=models.CASCADE , related_name="questions")
-    user = models.ForeignKey(User , on_delete=models.CASCADE , related_name="question_answers")
+    user = models.ForeignKey(User , on_delete=models.CASCADE , related_name="questions")
     question = models.TextField(null=False)
-    answer = models.TextField(null=True , blank=True)
     score = models.TextField(null=False , default=5)        
     
-
+class Answer(models.Model) :
+    user = models.ForeignKey(User , on_delete=models.CASCADE , related_name="answers")
+    question = models.ForeignKey(Question , on_delete=models.CASCADE , related_name="answers")
+    answer = models.TextField(null=False , blank=False)
+    created_at = models.DateTimeField(auto_now_add=True)
     
 
 # TODO add state to it
@@ -80,7 +83,7 @@ class Resume(models.Model) :
         
         
         
-    job_seeker = models.OneToOneField(JobSeeker , on_delete=models.CASCADE)
+    job_seeker = models.OneToOneField(JobSeeker , on_delete=models.CASCADE )
     file = models.FileField(upload_to='resumes/' , null=True , blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

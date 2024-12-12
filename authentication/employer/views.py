@@ -36,7 +36,7 @@ from package.models import PurchasedPackage, Package
 from .utils import can_create_offer, employer_exists
 from celery.result import AsyncResult
 from job_seeker.utils import job_seeker_exists
-from .mixins import InterviewScheduleMixin , FilterResumeMixin , CountryCityIdMixin , FilterEmployerMixin , FilterJobOpportunityMixin , FilterOrderMixin
+from .mixins import InterviewScheduleMixin , FilterResumeMixin , CountryCityIdMixin , FilterEmployerMixin , FilterJobOpportunityMixin , FilterOrderMixin , FilterInterviewScheduleMixin
 
 from django.db.models import Q
 from rest_framework.pagination import LimitOffsetPagination
@@ -1146,17 +1146,26 @@ class ChangeApplyStatus(APIView) :
 
         
   
-class EmployerInterviewSchedule(APIView , InterviewScheduleMixin) :
+class EmployerInterviewSchedule(APIView , InterviewScheduleMixin , FilterInterviewScheduleMixin) :
+    """get the employer inteview schedule and filter the data"""
     @swagger_auto_schema(
         operation_summary="list of employer interview schedules",
         operation_description="employers can get their own schedule",
+        manual_parameters=[            
+        openapi.Parameter(name="status" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the orders with EXACT package priority. options are : 'normal' , 'urgent' "),
+        openapi.Parameter(name="interview_time" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING, description="get the interviews with EXACT interview_time"),
+        openapi.Parameter(name="min_interview_time" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the interviews with MIN interview_time"),
+        openapi.Parameter(name="max_interview_time" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the interviews with MAX interview_time"),
+        openapi.Parameter(name="created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING, description="get the interviews with EXACT created date"),
+        openapi.Parameter(name="min_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the orders with MIN created date(lte)"),
+        openapi.Parameter(name="max_created_at" , in_=openapi.IN_QUERY , type=openapi.TYPE_STRING , description="get the orders with MAX created date(gte)"),
+        ],
         responses={
-            200 : InterviewScheduleSerializer,
-            400 : "invalid parameters",
-            403 : "does not have permission",
-            404 : "employer was not found",
+            200: OrderSerializer,
+            404: "employer/order was not found",
+            403: "user doesn't have permission to change this data",
         },
-        security=[{"Bearer" : []}]
+        security=[{"Bearer": []}]
     )
     # list of employer interview schedule
     def get(self , request):
@@ -1166,7 +1175,12 @@ class EmployerInterviewSchedule(APIView , InterviewScheduleMixin) :
             return Response(data={"error" : "employer does not exists"} ,status=HTTP_404_NOT_FOUND )
         # get the schedule base on employer
         interviews = InterviewSchedule.objects.filter(apply__job_opportunity__employer = employer ).exclude(status__in = ["rejected_by_employer" , "rejected_by_jobseeker"])
-        serializer = InterviewScheduleSerializer(interviews , many=True)
+        
+        filtered_data = self.filter_interview(interviews)
+        if isinstance(filtered_data , Response) :
+            return filtered_data            
+        
+        serializer = InterviewScheduleSerializer(filtered_data , many=True)
         return Response(data={"data" : serializer.data} , status=HTTP_200_OK)
     
     

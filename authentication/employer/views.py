@@ -16,7 +16,6 @@ from django.utils.timezone import make_aware , make_naive
 from rest_framework.pagination import LimitOffsetPagination
 # local imports
 from .serializers import (EmployerSerializer,
-                          GetEmployerSerializer,
                           JobOpportunitySerializer,
                           GetJobOpportunitySerializer,
                           ViewedResumeSerializer,
@@ -1237,95 +1236,3 @@ class EmployerInterviewSchedule(APIView , InterviewScheduleMixin , FilterIntervi
 
   
   
-# TODO  add this to admin app    
-# for admins
-class ChangeJobOfferStatus(APIView) :
-    @swagger_auto_schema(
-        operation_id="change job offer status",
-        operation_summary="change the job opportunity status",
-        operation_description="only admins can change the job opportunity status",
-        request_body=JobOpportunitySerializer,
-        responses={
-            200 : JobOpportunitySerializer,
-            400 : "invalid parameters",
-            404 : "employer/offer was not found",
-        },
-        security=[{"Bearer" : []}]
-    )
-    def patch(self , request) :
-        user = request.user
-        offer_id = request.data.get('offer_id')
-        status = request.data.get('status')
-        # only admins can change the offer status
-        if not user.is_superuser :
-            return Response(data={"detail" : "user does not have permission to do this action"} , status=HTTP_403_FORBIDDEN) 
-             
-        if not offer_id :
-            return Response(data={"detail" : "offer_id must be enter"} , status=HTTP_400_BAD_REQUEST)
-        
-        if not status :
-            return Response(data={"detail" : "status must be enter" , "success" : False} , status=HTTP_400_BAD_REQUEST)
-        
-        job_opportunity = JobOpportunity.objects.filter(pk=offer_id)
-        if not job_opportunity.exists() :
-            return Response(data={"detail" : "there is no job opportunity with this information"} , status=HTTP_404_NOT_FOUND)
-        
-        
-        serializer = JobOpportunitySerializer(job_opportunity.first() , data=request.data , partial=True)
-        if serializer.is_valid() :
-            data = serializer.validated_data
-            status = data['status']
-            # change the active to true if the offer is approved by the admin
-            if status == "approved" :
-                data['active'] = True
-            serializer.save()
-            return Response(data={"success" : True , "data" : serializer.data} , status=HTTP_200_OK)
-        return Response(data={"success" : False , "errors" : serializer.errors} , status=HTTP_200_OK)
-
-# admins change the price of the package
-# the package will be deleted and then with that package info and new price a new package will be created
-class ChangePackagePrice(APIView) :
-    def post(self , request):
-        user = request.user
-        package_id = request.data.get('package_id')
-        new_price = request.data.get('new_price')
-        if not new_price :
-            return Response(data={"detail" : "new price must be enetered"} , status=HTTP_400_BAD_REQUEST)
-        if not package_id :
-            return Response(data={"detail" : "package_id must be entered"} , status=HTTP_400_BAD_REQUEST)
-        if not user.is_superuser :
-            return Response(data={"detail" : "user does no have permission to do this action"} , status=HTTP_403_FORBIDDEN)
-        try :
-            package = Package.objects.get(pk = package_id)
-        except Package.DoesNotExist :
-            return Response(data={"detail" : "package does not exists"} , status=HTTP_404_NOT_FOUND)
-        package_data = PackageSerializer(package).data
-        package_data['price'] = new_price
-        package.active = False
-        package.save()
-        serializer = PackageSerializer(data=package_data)
-        if serializer.is_valid() :
-            serializer.save(user=user , active=True)
-            return Response(data={"detail" : "success"} , status=HTTP_200_OK)
-        return Response(data={"success" : False , "errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
-    
-    
-class AllEmployers(APIView , FilterEmployerMixin) :
-    def get(self , request) :
-        """get all the employer with some filtering"""
-        user = request.user
-        if not user.is_superuser :
-            return Response(data={"error" : "User does not have permission to do this action"}  , status=HTTP_403_FORBIDDEN)
-        
-        employer = self.filter_employer()
-        # return the response if there was any problem
-        if isinstance(employer , Response) :
-            return employer
-        
-        # paginate the result
-        paginator = LimitOffsetPagination()
-        paginator.paginate_queryset(employer , request)
-        
-        serializer = GetEmployerSerializer(employer , many=True)
-        return Response(data={"data" : serializer.data} , status=HTTP_200_OK)
-    

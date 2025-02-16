@@ -72,7 +72,14 @@ class EmployerRegister(APIView) :
     @swagger_auto_schema(
         operation_summary="register employer",
         operation_description="register the user if this user is not employer",
-        request_body= EmployerSerializer,
+        request_body= openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "province" : openapi.Schema(type=openapi.TYPE_STRING , description="Province of the employer"),
+                "city" : openapi.Schema(type=openapi.TYPE_STRING , description="City of the employer"),
+            },
+            required=["province" , "city"]
+            ),
         responses= {
             201 : "employer created successfully",
             400 : "invalid parameters",    
@@ -88,9 +95,6 @@ class EmployerRegister(APIView) :
         serializer = EmployerSerializer(data=request.data)
         if serializer.is_valid() :
             # TODO fix this
-            data = self.country_and_city_id(request)
-            if isinstance(data , Response):
-                return data
             city = request.data.get('city')
             province = request.data.get('province')
             # adding the user to the validated data
@@ -98,6 +102,9 @@ class EmployerRegister(APIView) :
             # assign the permission to the user
             assign_perm('view_employer' , user , employer)
             assign_perm('delete_employer' , user , employer)
+            # change user role
+            user.role = 1
+            user.save()
             return Response(data={"detail" : "Employer registered successfully"}, status=HTTP_201_CREATED)
         return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
 

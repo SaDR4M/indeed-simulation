@@ -137,8 +137,8 @@ class SignInApiView(APIView):
     """
     permission_classes = [AllowAny]
     @swagger_auto_schema(
-        operation_description="Checking the OTP that was sent to user with the entered OTP then Signup/in the user base on the user existence",
-        operation_summary="Signup/in",
+        operation_description="Checking the OTP that was sent to user with the entered OTP then Signin the user",
+        operation_summary="Signin",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
@@ -198,8 +198,8 @@ class SignUpApiView(APIView):
     """
     permission_classes = [AllowAny]
     @swagger_auto_schema(
-        operation_description="Checking the OTP that was sent to user with the entered OTP then Signup the user base on the user existence",
-        operation_summary="Signup/in",
+        operation_description="Checking the OTP that was sent to user with the entered OTP then Signup the user",
+        operation_summary="Signup",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
@@ -207,9 +207,8 @@ class SignUpApiView(APIView):
                 "otp" : openapi.Schema(description="otp" , type=openapi.TYPE_STRING , minlength=5),
                 "birthday" : openapi.Schema(description="user birthday" , type=openapi.TYPE_STRING),
                 "password" : openapi.Schema(description="user password" , type=openapi.TYPE_STRING),
-                "email" : openapi.Schema(description="user email" , type=openapi.TYPE_STRING)
             },
-            required=["mobile" , "otp" , "birthday"]
+            required=["mobile" , "otp" , "birthday" , "password"]
         ),
 
         responses={

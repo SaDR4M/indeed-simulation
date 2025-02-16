@@ -29,8 +29,10 @@ class User(AbstractBaseUser):
         help_text='کد موبایل کاربر - DialCode',
     )
     role_choices = (
-        (0, "buyer"),
-        (2, "operator"),
+        (0 , "pre_register"),
+        (1, "employer"), 
+        (2, "employee"),
+        (3 , "operator"),
         (10, "admin"),
     )
     role = models.SmallIntegerField(

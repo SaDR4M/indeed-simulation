@@ -75,6 +75,9 @@ class JobSeekerRegister(APIView) :
             job_seeker = serializer.save(city=city , province=province)
             # assign base permission
             utils.assign_base_permissions(user, job_seeker, "jobseeker")
+            # change user role
+            user.role = 2
+            user.save()
             return Response(data={"detail" : "Job Seeker registered successfully"}, status=status.HTTP_201_CREATED)
         return Response(data={"errors" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 

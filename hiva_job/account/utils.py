@@ -1,12 +1,5 @@
 # built-in
-import requests
-import datetime
 from user_agents import parse
-import random
-from datetime import datetime, timedelta
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 # django & rest imports
 from django.core.cache import cache
 from django.contrib.auth.hashers import make_password
@@ -16,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.status import HTTP_200_OK , HTTP_400_BAD_REQUEST
 from django.core.cache import cache
+from django.utils.timezone import datetime
 # third party
 # local imports
 from account.models import UserLog
@@ -70,7 +64,7 @@ def create_user_log(user_obj, request, kind):
     
     
 def check_user_birthday(user) :
-        today = datetime.date.today()
+        today = datetime.today()
         today_is_birthday = False
         # set year to 1 check the month an day
         a = user.birthday.replace(year=1)
@@ -89,8 +83,8 @@ def signin_user(request , user_obj) :
     """sign in user"""
     refresh = RefreshToken.for_user(user_obj)
     # check user birthday 
-    today_is_birthday = check_user_birthday(user_obj)
-    need_complete_profile = user_obj.need_complete       
+    # today_is_birthday = check_user_birthday(user_obj)
+    # need_complete_profile = user_obj.need_complete       
     # user should change their password if they login successfully via this method. so:
     user_serialized = UserSerializer(
         user_obj,
@@ -103,9 +97,7 @@ def signin_user(request , user_obj) :
     # successful login
     response_json = {
         "succeeded": True,
-        "Authorization": 'Token '+str(refresh.access_token),
-        "role": user_obj.role,
-        "today_is_birthday": today_is_birthday,
+        # "today_is_birthday": today_is_birthday,
     }
     # user log for LOGIN
     create_user_log(user_obj, request, kind=0)
@@ -119,6 +111,17 @@ def signup_user(request) :
     birthday = request.data.get("birthday")
     role = request.data.get("role")
     mobile = request.data.get("mobile")
+    # TODO add regex for password
+    password = request.data.get("password")
+    # ADMIN role
+    if role == 10 :
+        return Response(status=403)
+    # if user is employer it's not real person => this might change
+    if role == 1 :
+        is_real = 0
+    # if user is employee it's real person
+    else :
+        is_real = 1
     # if not birthday or role or mobile :
     #     return Response(
     #         data = {
@@ -128,18 +131,16 @@ def signup_user(request) :
     #         status = HTTP_400_BAD_REQUEST
     #     )
     # user data
-    # OPTIONAL data 
-    password = make_password(request.data.get("password"))
-    email = request.data.get("email")
+    hashed_password = make_password(password)
     req = {
-        "password": password,
-        "birthday": birthday,
+        # TODO add birthday to this
+        "password": hashed_password,
+        # "birthday": birthday,
         "mobile": mobile,
         # NOTE becareful with this role if client pass ADMIN role the ADMIN user will be created
         "role": role,
-        "email": email,
         "is_active": True, 
-        "is_real": 1,
+        "is_real": is_real,
         "last_login": timezone.now()
     }
         
@@ -148,16 +149,12 @@ def signup_user(request) :
         return validation_error(user_serialized)
     # create user instance
     user_obj = user_serialized.save()  
-    # create token
-    token = RefreshToken.for_user(user_obj)
     # create log for LOGIN
     create_user_log(user_obj, request, kind=0)
         
     # TODO Security:  dont send Authorization TOKEN
     response_json = {
         "succeeded": True,
-        "Authorization": f'Token {token.access_token}',
-        "role": user_obj.role,
     }
         
     return Response(response_json, status=HTTP_200_OK)    

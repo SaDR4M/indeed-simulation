@@ -16,7 +16,6 @@ from core.kavenegar import *
 
 @shared_task
 def send_otp(receptor, token,token2, type, sender="100045312", user=None):
-    # TODO remove the api key
     # only call to iranian users
     if not receptor.startswith(('98', '+98', '0098')):
         return None
@@ -40,7 +39,6 @@ def send_otp(receptor, token,token2, type, sender="100045312", user=None):
 
 @shared_task
 def send_sms(receptor, message,  smsCategoryCode, sender="100045312", user=None): 
-    # TODO remove the API key
     
     # only call to iranian users
     if not receptor.startswith(('98', '+98', '0098')):

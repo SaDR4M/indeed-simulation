@@ -70,11 +70,8 @@ class JobSeekerRegister(APIView) :
             data['user'] = user
             # adding the city and country
             # TODO fix this
-            country_data = self.country_and_city_id(request)
-            if isinstance(country_data , Response):
-                return country_data
-            city = country_data['city']
-            province = country_data['province']
+            city = request.data.get('city')
+            province = request.data.get('province')
             job_seeker = serializer.save(city=city , province=province)
             # assign base permission
             utils.assign_base_permissions(user, job_seeker, "jobseeker")

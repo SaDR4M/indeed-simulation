@@ -91,8 +91,8 @@ class EmployerRegister(APIView) :
             data = self.country_and_city_id(request)
             if isinstance(data , Response):
                 return data
-            city = data['city']
-            province = data['province']
+            city = request.data.get('city')
+            province = request.data.get('province')
             # adding the user to the validated data
             employer = serializer.save(user=user , city=city, province=province)
             # assign the permission to the user
@@ -553,11 +553,9 @@ class JobOffer(APIView  , FilterJobOpportunityMixin) :
         if serializer.is_valid() :
             # adding city and country
             # TODO fix this
-            data = self.country_and_city_id(request)
-            if isinstance(data , Response):
-                return data
-            city = data['city']
-            province = data['province']
+            city = request.data.get("city")
+            province = request.data.get("province")
+            
             offer = serializer.save(employer=employer , city=city , province=province)
             purchased_packages.remaining -= 1
             purchased_packages.save()

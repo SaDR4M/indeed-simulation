@@ -1,8 +1,10 @@
+# third party imports
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 
 
-# function that return the document
+
+
 
 
 sign_in_document = {
@@ -63,49 +65,4 @@ update_credential_document = {
         404: openapi.Response(description="user does not exists"),
     },
     "security" : [{"Bearer": []}]
-}
-
-get_otp_document = {
-    "operation_summary" : "Get otp",
-    "operation_description" : "Get the otp for the phone number",
-    "manual_parameters" : [
-        openapi.Parameter('contact', openapi.IN_QUERY, description="otp for the contact", type=openapi.TYPE_STRING,required=True, minlength=11),
-        openapi.Parameter('type', openapi.IN_QUERY, description="type of contact", type=openapi.TYPE_STRING,
-                          required=True, minlength=11)],
-    "responses" : {
-        200: openapi.Response(description="otp", examples={"application/json": [{"otp": "123456", "otp_sent": True}]}),
-        400: "invalid parameters"
-    }
-}
-
-
-
-verify_otp_document = {
-    "operation_summary" : "verify otp",
-    "operation_description" : "Verify the otp for the phone number",
-    "request_body" : openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            "phone": openapi.Schema(description="phone number", type=openapi.TYPE_STRING, minlength=11),
-            "otp": openapi.Schema(description="otp", type=openapi.TYPE_STRING),
-        },
-        required=['phone' , 'otp']
-    ),
-    # "security" : [{"bearer": []}],
-    "responses" : {
-        200: openapi.Response(
-            description="valid otp",
-            examples={
-                "application/json": {
-                    "user_exist": True,
-                    "otp_valid": True,
-                    "tokens": {
-                        "access": "string",
-                        "refresh": "string",
-                    }
-                }
-            }
-        ),
-        400: "invalid parameters",
-    }
 }

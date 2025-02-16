@@ -1,14 +1,11 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView , TokenRefreshView , TokenVerifyView
-from . import views
+from account.views import UserOTPApiView , SignInApiView , SignUpApiView , UpdateCredential
 
 urlpatterns = [
-    path('data' , views.ShowData.as_view()),
-    path('signin', views.SignIn.as_view() , name='signin'),
-    path('update-credential', views.UpdateCredential.as_view(), name='update_credential'),
-    path('get-otp' , views.GetOtp.as_view(), name='get_otp'),
-    path('verify-otp' , views.VerifyOtp.as_view(), name='verify_otp'),
-    path('token', TokenObtainPairView.as_view(), name='token'),
-    path('token/refresh', TokenRefreshView.as_view(), name='token_refresh'),
-    path('token/verify', TokenVerifyView.as_view(), name='token_verify'),
+    # path('signin/', SignIn.as_view() , name='signin_with_pass'),
+    path('update-credential/', UpdateCredential.as_view(), name='update_credential'),
+    path('get_otp/' , UserOTPApiView.as_view() , name="send_otp"),
+    path('signin/' , SignInApiView.as_view() , name="signin"),
+    path('signup/' , SignUpApiView.as_view() , name="signup"),
 ]

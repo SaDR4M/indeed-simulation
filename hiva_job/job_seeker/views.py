@@ -17,11 +17,11 @@ from account.models import User
 from . import utils
 from employer.serializers import InterviewScheduleSerializer
 from employer.models import InterviewSchedule  
-from employer.mixins import InterviewScheduleMixin, FilterInterviewScheduleMixin , CountryCityIdMixin 
+from employer.mixins import InterviewScheduleMixin, FilterInterviewScheduleMixin 
 from job_seeker.mixins import JobSeekerFilterMixin , FilterTestMixin , FilterQuestionMixin
 # Create your views here.
 
-class JobSeekerRegister(APIView , CountryCityIdMixin) :
+class JobSeekerRegister(APIView) :
     @swagger_auto_schema(
         operation_summary="get the current job seeker data",
         operation_description="get the current job seeker data if the job seeker exists",
@@ -69,13 +69,13 @@ class JobSeekerRegister(APIView , CountryCityIdMixin) :
             data = serializer.validated_data
             data['user'] = user
             # adding the city and country
+            # TODO fix this
             country_data = self.country_and_city_id(request)
             if isinstance(country_data , Response):
                 return country_data
             city = country_data['city']
-            country = country_data['country']
-            state = country_data['state']
-            job_seeker = serializer.save(city=city , country=country , state=state)
+            province = country_data['province']
+            job_seeker = serializer.save(city=city , province=province)
             # assign base permission
             utils.assign_base_permissions(user, job_seeker, "jobseeker")
             return Response(data={"detail" : "Job Seeker registered successfully"}, status=status.HTTP_201_CREATED)

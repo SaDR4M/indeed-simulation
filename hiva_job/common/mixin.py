@@ -23,8 +23,7 @@ class LocationFilterMixin(models.Model) :
         
         location_allow_list_filter = {
             "city" : {"model_field" : "city__name" , "lookup" : "iexact"},
-            "state" : {"model_field" : "state__name" , "lookup" : "iexact"},
-            "country" : {"model_field" : "country__name" , "lookup" : "iexact"}            
+            "province" : {"model_field" : "province__name" , "lookup" : "iexact"},       
         }        
 
         query = Q()

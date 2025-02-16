@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 import datetime
 # local import
-from account.models import User , Cities , Countries , States
+from account.models import User , Cities , Provinces
 from common.mixins import GenderMixin
 # Create your models here.
 
@@ -17,9 +17,8 @@ class Employer(GenderMixin):
     id_number = models.CharField(max_length=25)
     postal_code = models.CharField(max_length=25)
     created_at = models.DateTimeField(auto_now_add=True)
-    country = models.ForeignKey(Countries , related_name="country_employers" , on_delete=models.CASCADE)
-    state = models.ForeignKey(States , related_name="state_employers" , on_delete=models.CASCADE)
-    city = models.ForeignKey(Cities , related_name="city_emoployers" , on_delete=models.CASCADE)
+    province = models.ForeignKey(Provinces , related_name="state_employers" , on_delete=models.CASCADE , default=8)
+    city = models.ForeignKey(Cities , related_name="city_emoployers" , on_delete=models.CASCADE , default=301)
 
     
 # opportunity that employer makes
@@ -38,9 +37,8 @@ class JobOpportunity(GenderMixin):
     description = models.TextField(max_length=500)
     status = models.CharField(choices=OfferStatus , default=OfferStatus.REGISTRED)
     created_at = models.DateTimeField(auto_now_add=True)
-    country = models.ForeignKey(Countries , related_name="job_offers" , on_delete=models.CASCADE)
-    state = models.ForeignKey(States , related_name="job_states" , on_delete=models.CASCADE)
-    city = models.ForeignKey(Cities , related_name="job_offers" , on_delete=models.CASCADE)
+    province = models.ForeignKey(Provinces , related_name="job_states" , on_delete=models.CASCADE , default=8)
+    city = models.ForeignKey(Cities , related_name="job_offers" , on_delete=models.CASCADE , default=301)
     # i changed the data type of this column manually in the DB
     expire_at = models.DateTimeField()
 

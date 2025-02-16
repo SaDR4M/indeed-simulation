@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 # local import
-from account.models import User , Countries ,Cities , States
+from account.models import User, Cities , Provinces
 from common.mixins import GenderMixin
 # Create your models here.
 
@@ -25,9 +25,8 @@ class JobSeeker(GenderMixin):
     bio = models.TextField(blank=True , null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     birthday = models.DateField()
-    country = models.ForeignKey(Countries , related_name="city_jobseekers" , on_delete=models.CASCADE)
-    state = models.ForeignKey(States , related_name="state_jobseekers" , on_delete=models.CASCADE)
-    city = models.ForeignKey(Cities , related_name="city_jobseekers" , on_delete=models.CASCADE)
+    province = models.ForeignKey(Provinces , related_name="state_jobseekers" , on_delete=models.CASCADE , default=8)
+    city = models.ForeignKey(Cities , related_name="city_jobseekers" , on_delete=models.CASCADE , default=301)
    
 
 

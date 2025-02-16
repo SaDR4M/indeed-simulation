@@ -10,7 +10,7 @@ from employer.models import InterviewSchedule
 class JobSeekerSerializer(serializers.ModelSerializer):
     class Meta :
         model = JobSeeker
-        exclude = ['user' , 'city' , 'country' , 'state']
+        exclude = ['user' , 'city' , 'province']
         # fields = '__all__'
         
 class GetJobSeekerSerialzier(serializers.ModelSerializer) :

@@ -2,7 +2,7 @@ import json
 # third party imports
 from django.db import models 
 from django.db.models import Q
-from account.models import Cities , States , Countries
+from account.models.location import Cities , Provinces
 from rest_framework import status
 from rest_framework.response import Response
 # local imports
@@ -32,8 +32,7 @@ class LocationFilterMixin(models.Model) :
     
     location_filter_allow_list = {
             "city" : {"model_field" : "city__name" , "lookup" : "iexact"},
-            "state" : {"model_field" : "state__name" , "lookup" : "iexact"},
-            "country" : {"model_field" : "country__name" , "lookup" : "iexact"}            
+            "province" : {"model_field" : "province__name" , "lookup" : "iexact"},       
     }   
     
     def filter_location(self , parameter , value) :

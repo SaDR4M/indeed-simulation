@@ -17,11 +17,10 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 from django.conf.global_settings import AUTH_USER_MODEL, STATICFILES_DIRS
-load_dotenv(dotenv_path='.env')
-
+from decouple import config
 # Reading .env file
 
-MERCHANT_ID = os.getenv('MERCHANT_ID')
+MERCHANT_ID = config('MERCHANT_ID')
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -30,17 +29,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = config("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 # ASGI
 ASGI_APPLICATION = "hiva_job.asgi.application"
-
-ALLOWED_HOSTS = [
-    '127.0.0.1',
-]
+# TODO just for development
+ALLOWED_HOSTS = ['*']
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+CORS_ORIGIN_ALLOW_ALL = True
 
 
 # Application definition
@@ -51,20 +51,24 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    # packages
+    'rest_framework_simplejwt.token_blacklist',
+    'guardian',
+    'drf_yasg',
+    'celery',
+    # 'django_elasticsearch_dsl',
+    # local
     'account',
+    'core',
+    'notifications',
     'manager',
     'payment',
     'employer',
     'job_seeker',
     'package',
     'common',
-    'rest_framework',
-    'rest_framework_simplejwt.token_blacklist',
-    'drf_yasg',
-    'guardian',
-    'celery',
     # 'channels'
-    # 'django_elasticsearch_dsl',
 
 
 ]
@@ -106,23 +110,14 @@ WSGI_APPLICATION = 'hiva_job.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
+        'NAME': config("DB_NAME"),                      
+        'USER': config("DB_USER"),
+        'PASSWORD': config("DB_PASS"),
+        'HOST': config("DB_HOST"),
+        'PORT': config("DB_PORT"),
     }
 }
 
-# DATABASE = {
-#     'default' : {
-#         'ENGINE' : 'django.db.backends.sqlite3',
-#         'NAME' : BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
-# Password validation
-# https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
 AUTH_USER_MODEL = 'account.User'
 
@@ -150,45 +145,15 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 10
 }
-# django rest framework jwt setting
+# jwt settings
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(hours=9),
-    "ROTATE_REFRESH_TOKENS": True,
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=8),
+    'REFRESH_TOKEN_LIFETIME': timedelta(hours=10),
+    'ROTATE_REFRESH_TOKENS': False, # IMPORTANT
+    'UPDATE_LAST_LOGIN': False,
+    'AUTH_HEADER_TYPES': ('Token',),
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     "BLACKLIST_AFTER_ROTATION": True,
-    "UPDATE_LAST_LOGIN": False,
-
-    "ALGORITHM": "HS256",
-    "SIGNING_KEY": SECRET_KEY,
-    "VERIFYING_KEY": "",
-    "AUDIENCE": None,
-    "ISSUER": None,
-    "JSON_ENCODER": None,
-    "JWK_URL": None,
-    "LEEWAY": 0,
-
-    "AUTH_HEADER_TYPES": ("Bearer",),
-    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
-    "USER_ID_FIELD": "pk",
-    "USER_ID_CLAIM": "user_id",
-    "USER_AUTHENTICATION_RULE": "rest_framework_simplejwt.authentication.default_user_authentication_rule",
-
-    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
-    "TOKEN_TYPE_CLAIM": "token_type",
-    "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
-
-    "JTI_CLAIM": "jti",
-
-    "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
-    "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
-    "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
-
-    "TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainPairSerializer",
-    "TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSerializer",
-    "TOKEN_VERIFY_SERIALIZER": "rest_framework_simplejwt.serializers.TokenVerifySerializer",
-    "TOKEN_BLACKLIST_SERIALIZER": "rest_framework_simplejwt.serializers.TokenBlacklistSerializer",
-    "SLIDING_TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainSlidingSerializer",
-    "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
 
 AUTHENTICATION_BACKENDS = (
@@ -200,16 +165,21 @@ AUTHENTICATION_BACKENDS = (
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
+        "LOCATION": config("REDIS_URL"),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            # Add additional security or performance options if needed
-        }
+            'MAX_ENTRIES' : 15000,
+        },
+        "KEY_PREFIX": "example"
     }
 }
-# celery setting
-CELERY_BROKER_URL='redis://127.0.0.1:6379',
-CELERY_RESULT_BACKEND='redis://127.0.0.1:6379'
+
+CACHEOPS_REDIS = config("REDIS_URL")
+# celery settings
+CELERY_BROKER_URL = config("CELERY_BROKER_URL")
+CELERY_RESULT_BACKEND = "rpc://"
+CELERY_TIMEZONE = "Asia/Tehran" #'Iran'
+CELERY_TASK_TRACK_STARTED = True
 
 # swagger setting
 SWAGGER_SETTINGS = {
@@ -224,7 +194,10 @@ SWAGGER_SETTINGS = {
 }
 
 # guardian
-ANONYMOUS_USER_ID = -1
+AUTH_USER_MODEL = "account.User"
+
+GUARDIAN_GET_INIT_ANONYMOUS_USER = 'account.utils.get_anonymous_user'
+ANONYMOUS_USER_ID = 9999999999
 
 # elastic search setting
 # change the password and set it in the .env

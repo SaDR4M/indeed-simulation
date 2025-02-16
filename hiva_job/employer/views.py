@@ -35,7 +35,7 @@ from package.models import PurchasedPackage, Package
 from .utils import can_create_offer, employer_exists
 from celery.result import AsyncResult
 from job_seeker.utils import job_seeker_exists
-from .mixins import InterviewScheduleMixin , FilterResumeMixin , CountryCityIdMixin , FilterEmployerMixin , FilterJobOpportunityMixin , FilterOrderMixin , FilterInterviewScheduleMixin
+from .mixins import InterviewScheduleMixin , FilterResumeMixin  , FilterEmployerMixin , FilterJobOpportunityMixin , FilterOrderMixin , FilterInterviewScheduleMixin
 
 from django.db.models import Q
 from rest_framework.pagination import LimitOffsetPagination
@@ -45,7 +45,7 @@ from account.models import Message
 from . import tasks
 # Create your views here.
 
-class EmployerRegister(APIView , CountryCityIdMixin) :
+class EmployerRegister(APIView) :
     @swagger_auto_schema(
     operation_summary="get employer infomartion",
     operation_description="get the employer information if the user is employer",
@@ -87,15 +87,14 @@ class EmployerRegister(APIView , CountryCityIdMixin) :
             return Response(data={"detail" : "Employer exists"} , status=HTTP_400_BAD_REQUEST)
         serializer = EmployerSerializer(data=request.data)
         if serializer.is_valid() :
-
+            # TODO fix this
             data = self.country_and_city_id(request)
             if isinstance(data , Response):
                 return data
             city = data['city']
-            country = data['country']
-            state = data['state']
+            province = data['province']
             # adding the user to the validated data
-            employer = serializer.save(user=user , city=city , country=country , state=state)
+            employer = serializer.save(user=user , city=city, province=province)
             # assign the permission to the user
             assign_perm('view_employer' , user , employer)
             assign_perm('delete_employer' , user , employer)
@@ -479,7 +478,7 @@ class OrderItem(APIView) :
 
     
     
-class JobOffer(APIView , CountryCityIdMixin , FilterJobOpportunityMixin) :
+class JobOffer(APIView  , FilterJobOpportunityMixin) :
     
     @swagger_auto_schema(
         operation_summary="job opportunities that user has made",
@@ -553,13 +552,13 @@ class JobOffer(APIView , CountryCityIdMixin , FilterJobOpportunityMixin) :
         serializer = JobOpportunitySerializer(data=request.data)
         if serializer.is_valid() :
             # adding city and country
+            # TODO fix this
             data = self.country_and_city_id(request)
             if isinstance(data , Response):
                 return data
             city = data['city']
-            country = data['country']
-            state = data['state']
-            offer = serializer.save(employer=employer , country=country, city=city , state=state)
+            province = data['province']
+            offer = serializer.save(employer=employer , city=city , province=province)
             purchased_packages.remaining -= 1
             purchased_packages.save()
             message = Message.objects.create(type="expire" , kind="email" , email=user.email)
@@ -734,10 +733,7 @@ class AllResumes(APIView , FilterResumeMixin) :
                 'city', openapi.IN_QUERY, description="City to filter by (exact match)", type=openapi.TYPE_STRING
             ),
             openapi.Parameter(
-                'state', openapi.IN_QUERY, description="State to filter by (exact match)", type=openapi.TYPE_STRING
-            ),
-            openapi.Parameter(
-                'country', openapi.IN_QUERY, description="Country to filter by (exact match)", type=openapi.TYPE_STRING
+                'province', openapi.IN_QUERY, description="Province to filter by (exact match)", type=openapi.TYPE_STRING
             ),
         ],
         # request_body=,
@@ -816,11 +812,8 @@ class ResumeViewer(APIView , FilterResumeMixin) :
                 'city', openapi.IN_QUERY, description="City to filter by (exact match)", type=openapi.TYPE_STRING
             ),
             openapi.Parameter(
-                'state', openapi.IN_QUERY, description="State to filter by (exact match)", type=openapi.TYPE_STRING
-            ),
-            openapi.Parameter(
-                'country', openapi.IN_QUERY, description="Country to filter by (exact match)", type=openapi.TYPE_STRING
-            ),
+                'province', openapi.IN_QUERY, description="Province to filter by (exact match)", type=openapi.TYPE_STRING
+            )
         ],
         # request_body=,
         responses={
@@ -962,11 +955,8 @@ class AppliedResumeViewer(APIView , FilterResumeMixin) :
                 'city', openapi.IN_QUERY, description="City to filter by (exact match)", type=openapi.TYPE_STRING
             ),
             openapi.Parameter(
-                'state', openapi.IN_QUERY, description="State to filter by (exact match)", type=openapi.TYPE_STRING
-            ),
-            openapi.Parameter(
-                'country', openapi.IN_QUERY, description="Country to filter by (exact match)", type=openapi.TYPE_STRING
-            ),           
+                'province', openapi.IN_QUERY, description="Province to filter by (exact match)", type=openapi.TYPE_STRING
+            ),          
             openapi.Parameter(
                 'job_offer_name', openapi.IN_QUERY, description="viewed applied resume that CONTAINS (in case sensitive) job offer name ", type=openapi.TYPE_INTEGER
             ),

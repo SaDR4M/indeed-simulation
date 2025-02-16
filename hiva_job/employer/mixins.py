@@ -14,7 +14,7 @@ from employer.utils import employer_exists
 from job_seeker.utils import job_seeker_exists
 from job_seeker.serializers import GetResumeSerializer 
 from job_seeker.models import Resume
-from account.models import Cities , Countries , States
+from account.models import Cities , Provinces
 from common.mixins import GenderFilterMixin , LocationFilterMixin , CreationTimeFilterMixin
 from package.mixins import FilterPackageMixin
 from .models import JobOpportunity
@@ -89,43 +89,43 @@ class InterviewScheduleMixin:
              return Response(data={"error" : "conflict with its own time" , "fa_error" : "شما مصحاحبه ای با تایم داده شده دارید"} , status=status.HTTP_400_BAD_REQUEST)
    
    
-class CountryCityIdMixin:
+# class CountryCityIdMixin:
     
-    def country_and_city_id(self , request) :
+#     def country_and_city_id(self , request) :
         
-        city = request.data.get('city') 
-        if not city :
-            return Response(data={"error" : "city must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+#         city = request.data.get('city') 
+#         if not city :
+#             return Response(data={"error" : "city must be entered"} , status=status.HTTP_400_BAD_REQUEST)
         
-        state = request.data.get('state') 
-        if not state :
-            return Response(data={"error" : "state must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+#         state = request.data.get('state') 
+#         if not state :
+#             return Response(data={"error" : "state must be entered"} , status=status.HTTP_400_BAD_REQUEST)
         
-        country = request.data.get('country')
-        if not country :
-            return Response(data={"error" : "country must be entered"} , status=status.HTTP_400_BAD_REQUEST)
+#         country = request.data.get('country')
+#         if not country :
+#             return Response(data={"error" : "country must be entered"} , status=status.HTTP_400_BAD_REQUEST)
         
-        data = {}
-        try :
-            country = Countries.objects.get(name__iexact=country.lower())
-            data['country'] = country
-        except Countries.DoesNotExist :
-            return Response(data={"error" : "country does not exists"} , status=status.HTTP_404_NOT_FOUND)
+#         data = {}
+#         try :
+#             country = Countries.objects.get(name__iexact=country.lower())
+#             data['country'] = country
+#         except Countries.DoesNotExist :
+#             return Response(data={"error" : "country does not exists"} , status=status.HTTP_404_NOT_FOUND)
         
-        try :
-            state = States.objects.get(country=country , name__iexact=state.lower())
-            data['state'] = state
-        except States.DoesNotExist :
-            return Response(data={"error" : "state does not exists"} , status=status.HTTP_404_NOT_FOUND)
+#         try :
+#             state = States.objects.get(country=country , name__iexact=state.lower())
+#             data['state'] = state
+#         except States.DoesNotExist :
+#             return Response(data={"error" : "state does not exists"} , status=status.HTTP_404_NOT_FOUND)
         
         
-        try :
-            city = Cities.objects.get(country=country , state=state ,  name__iexact=city.lower())
-            data['city'] = city
-        except Cities.DoesNotExist :
-            return Response(data={"error" : "city does not exists"} , status=status.HTTP_400_BAD_REQUEST)
+#         try :
+#             city = Cities.objects.get(country=country , state=state ,  name__iexact=city.lower())
+#             data['city'] = city
+#         except Cities.DoesNotExist :
+#             return Response(data={"error" : "city does not exists"} , status=status.HTTP_400_BAD_REQUEST)
         
-        return data
+#         return data
        
    
    
@@ -166,8 +166,7 @@ class FilterResumeMixin(CreationTimeFilterMixin):
                 "gender" : {"model_field" : "job_seeker__gender" , "lookup" : "exact"},
                 "age" : {"model_field" : "job_seeker__birthday" , "lookup" : "gte"},
                 "skills": {"model_field": "skills", "lookup": "contains"},
-                "country": {"model_field": "job_seeker__country__name", "lookup": "iexact"},
-                "state": {"model_field": "job_seeker__state__name", "lookup": "iexact"},
+                "province": {"model_field": "job_seeker__province__name", "lookup": "iexact"},
                 "city": {"model_field": "job_seeker__city__name", "lookup": "iexact"},
             }
         if list_type == "viewed_resume" : 
@@ -186,8 +185,7 @@ class FilterResumeMixin(CreationTimeFilterMixin):
                 "gender" : {"model_field" : "resume__job_seeker__gender" , "lookup" : "exact"},
                 "age" : {"model_field" : "resume__job_seeker__birthday" , "lookup" : "gte"},
                 "skills": {"model_field": "resume__skills", "lookup": "contains"},
-                "country": {"model_field": "resume__job_seeker__country__name", "lookup": "iexact"},
-                "state": {"model_field": "resume__job_seeker__state__name", "lookup": "iexact"},
+                "province": {"model_field": "resume__job_seeker__province__name", "lookup": "iexact"},
                 "city": {"model_field": "resume__job_seeker__city__name", "lookup": "iexact"},
             }
 
@@ -207,8 +205,7 @@ class FilterResumeMixin(CreationTimeFilterMixin):
                 "gender" : {"model_field" : "resume__job_seeker__gender" , "lookup" : "exact"},
                 "age" : {"model_field" : "resume__job_seeker__birthday" , "lookup" : "gte"},
                 "skills": {"model_field": "resume__skills", "lookup": "contains"},
-                "country": {"model_field": "resume__job_seeker__country__name", "lookup": "iexact"},
-                "state": {"model_field": "resume__job_seeker__state__name", "lookup": "iexact"},
+                "province": {"model_field": "resume__job_seeker__province__name", "lookup": "iexact"},
                 "city": {"model_field": "resume__job_seeker__city__name", "lookup": "iexact"},
                 "job_offer_name" : {"model_field" : "job_offer__title" ,  "lookup" : "icontains"},
             }

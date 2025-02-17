@@ -31,7 +31,7 @@ class User(AbstractBaseUser):
     role_choices = (
         (0 , "pre_register"),
         (1, "employer"), 
-        (2, "employee"),
+        (2, "job_seeker"),
         (3 , "operator"),
         (10, "admin"),
     )
@@ -157,9 +157,6 @@ class User(AbstractBaseUser):
         return mobile +' - '+ name +' '+ family_name
     
         
-    def save(self, *args, **kwargs):
-        self.username = str(self.mobile)+'-'+str(self.role)
-        super().save(*args, **kwargs)
         
         
 

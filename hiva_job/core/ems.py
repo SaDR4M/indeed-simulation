@@ -3,7 +3,7 @@ from icecream import ic
 ### some error handling function , used for existace and validation for serializer error 
 
 def validation_error(serialized):
-    print(serialized.errors)
+    ic(serialized.errors)
     # en_detail = ''
     # for er in serialized.errors:
     #     en_detail +=er

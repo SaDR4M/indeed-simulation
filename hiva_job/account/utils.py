@@ -3,6 +3,8 @@ from user_agents import parse
 # django & rest imports
 from django.core.cache import cache
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth.password_validation import validate_password
+from django.core.validators import ValidationError
 from django.utils import timezone
 from django.contrib.auth.hashers import check_password
 from rest_framework.response import Response
@@ -11,6 +13,7 @@ from rest_framework.status import HTTP_200_OK , HTTP_400_BAD_REQUEST
 from django.core.cache import cache
 from django.utils.timezone import datetime
 # third party
+from icecream import ic
 # local imports
 from account.models import UserLog
 from account.serializer import UserSerializer
@@ -61,7 +64,20 @@ def create_user_log(user_obj, request, kind):
         user=user_obj,
     )
     user_log.save()
-    
+
+
+
+def create_token(user:object) :
+    """create token for the user"""
+    token = RefreshToken.for_user(user)
+    # login the user
+    return Response(
+        data = {
+            "succeeded" : True,
+            "Authorization" : f"Token {token.access_token}"
+        },
+        status = HTTP_200_OK
+    )  
     
 def check_user_birthday(user) :
         today = datetime.today()
@@ -78,9 +94,29 @@ def check_user_birthday(user) :
                 today_is_birthday = True
         return today_is_birthday
     
+
+def check_user_existence(mobile) :
+    try :
+        user = User.objects.get(mobile=mobile)
+    except User.DoesNotExist:
+        return Response(
+            data = {
+                "en_detail" : "Invalid mobile or password" ,
+                "fa_detail" : "شماره یا رمز وارد شده اشتباه است"
+                } ,
+            status = HTTP_400_BAD_REQUEST)
+    return user
+
+
+
+    
+    
+    
+    
+    
     
 def signin_user(request , user_obj) :
-    """sign in user"""
+    """sign in user with OTP"""
     refresh = RefreshToken.for_user(user_obj)
     # check user birthday 
     # today_is_birthday = check_user_birthday(user_obj)
@@ -105,49 +141,63 @@ def signin_user(request , user_obj) :
     return Response(response_json, status=HTTP_200_OK)
     
     
-def signup_user(request) :
+def signup_user(request:object) :
     """signup user"""
+    # TODO add regex for password
     # check user birthday , role and mobile if there is one missing signup will be fail
     birthday = request.data.get("birthday")
     role = request.data.get("role")
     mobile = request.data.get("mobile")
-    # TODO add regex for password
     password = request.data.get("password")
+    # validate inputs
+    if not birthday or not role or not mobile or not password :
+        return Response(
+            data = {
+                "succeeded" : False,
+                "detail" : "birthday/role/mobile/password must be entered"  
+            } ,
+            status = HTTP_400_BAD_REQUEST
+        )
     # ADMIN role
     if role == 10 :
         return Response(status=403)
     # if user is employer it's not real person => this might change
     if role == 1 :
         is_real = 0
-    # if user is employee it's real person
+    # if user is job seeker it's real person
     else :
         is_real = 1
-    # if not birthday or role or mobile :
-    #     return Response(
-    #         data = {
-    #             "succeeded" : False,
-    #             "detail" : "birthday/role/mobile must be entered"  
-    #         } ,
-    #         status = HTTP_400_BAD_REQUEST
-    #     )
+    # check user exists or not
+    # if the user is Repsonse it means user does not exists so we can create the user 
+    user = check_user_existence(mobile)
+    if not isinstance(user , Response) :
+        return Response(
+                data={
+                    "en_detail" : "user exists" ,
+                    "fa_detail" : " کاربری با این مشخصات وجود دارد"
+                } , 
+                status=HTTP_400_BAD_REQUEST
+            )
+    # validate user password
+    validated_pass = validate_user_password(password)
+    if isinstance(validate_password , Response) :
+        return validated_pass
     # user data
+    # NOTE becareful with role if client pass ADMIN role the ADMIN user will be created
     hashed_password = make_password(password)
     req = {
-        # TODO add birthday to this
         "password": hashed_password,
-        # "birthday": birthday,
+        "birthday": birthday,
         "mobile": mobile,
-        # NOTE becareful with this role if client pass ADMIN role the ADMIN user will be created
         "role": role,
         "is_active": True, 
         "is_real": is_real,
         "last_login": timezone.now()
-    }
-        
+    }   
     user_serialized = UserSerializer(data=req)
     if not user_serialized.is_valid():
         return validation_error(user_serialized)
-    # create user instance
+    # create user instance 
     user_obj = user_serialized.save()  
     # create log for LOGIN
     create_user_log(user_obj, request, kind=0)
@@ -159,10 +209,10 @@ def signup_user(request) :
         
     return Response(response_json, status=HTTP_200_OK)    
 
-def check_otp(mobile , otp) :
+def check_otp(mobile:str , otp:str) :
     hashed_otp = cache.get(f"OTP:{mobile}")
+    
     # otp has expired
-
     if not hashed_otp:
         return Response({
             "succeeded": False,
@@ -182,6 +232,115 @@ def check_otp(mobile , otp) :
             'show': True 
             }, status=HTTP_400_BAD_REQUEST)
     return True
+
+def signin_user_wp(mobile:str , password:str , request:object) :
+    """signin user with password and the mobile number"""
+    # if there is no user with the mobile number
+    user = check_user_existence(mobile)
+    if isinstance(user , Response) :
+        return user
+    # create token if the user exist and password is set
+    if user is not None and user.password is not None:
+        if user.check_password(password):
+            # create user log
+            create_user_log(user , request , kind=0)
+            token = create_token(user)
+            if isinstance(token , Response) :
+                return token
+        # if password is wrong
+        return Response(
+            data = {
+                "en_detail" : "Invalid mobile or password" ,
+                "fa_detail" : "شماره یا رمز وارد شده اشتباه است"
+                } ,
+            status = HTTP_400_BAD_REQUEST)
+    # if user exists but password is not set
+    if user is not None and user.password is None :
+        return Response(
+            data = {
+                "en_detail" : "Password is not set for the account",
+                "fa_detail" : "رمز عبور برای اکانت تعیین نشده است"
+            } ,
+            status=HTTP_400_BAD_REQUEST
+        )
+
+
+def validate_user_password(password:str) :
+    """validate the password then update user password"""
+    # validate new password => min len 8 , cannot be just numeric
+    try :
+        validate_password(password)
+    except ValidationError as e:
+        return Response(
+            data = {
+                "en_detail" : e.messages
+            }
+        )
+    return True
+
+
+def update_user_password(user:object , old_password:str , new_password:str , confirm_password:str ) :
+    """update user password"""
+    # for password change
+    # the old password and user password are not same
+    if not check_password(old_password , user.password) :
+        return Response(
+            data = {
+                "succeeded" : False,
+                "show" : True,
+                "en_detail" : "Invalid password",
+                "fa_detail" : "پسورد وارد شده نامعتبر است"
+            },
+            status=HTTP_400_BAD_REQUEST
+        )
+        
+    if new_password and confirm_password :
+        # check passwords match or not
+        if new_password != confirm_password:
+            return Response(
+                data = {
+                    "succeeded" : False,
+                    "show" : True,
+                    "en_detail": "password must match",
+                    "fa_detail" : "پسوردهای وارد شده مطابقت ندارند",
+                },
+                status = HTTP_400_BAD_REQUEST)
+        # user cannot set the old password as new password
+        if old_password == new_password :
+            return Response(
+                    data = {
+                    "succeeded" : False,
+                    "show" : True,
+                    "en_detail" : "current password cannot be set as new password",
+                    "fa_detail" : "پسورد فعلی به عنوان پسورد جدید مورد قبول نمی باشد"
+                }
+            )
+
+        validated_pass = validate_user_password(new_password)
+        # if something went wrong for the password validation
+        if isinstance(validated_pass , Response) :
+            return validated_pass
+        else :
+            # update user password
+            user.set_password(new_password)
+            user.save()
+            return Response(
+                data = {
+                    "succeeded" : True,
+                    "show" : True,
+                    "en_detail" : "password changed successfully",
+                    "fa_detail" : "پسورد با موفقیت تغییر کرد"
+                },
+                status=HTTP_200_OK
+            )   
+        
+    return Response(
+            data = {
+                "en_detail" : "new password and confirm password must be entered",
+                "fa_detail" : "پسورد جدید و تکرار آن باید وارد شوند"
+            },
+            status = HTTP_400_BAD_REQUEST
+        )
 # # cache expire time
 # EXPIRE_TIME = 60
 

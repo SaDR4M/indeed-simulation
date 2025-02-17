@@ -4,7 +4,7 @@ from rest_framework.response import Response
 
 
 # local imports
-from common.mixins import CreationTimeFilterMixin
+from core.mixins import CreationTimeFilterMixin
 
 
 

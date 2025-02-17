@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from django.db.models import Q
 # local imports
-from common.mixins import GenderFilterMixin , LocationFilterMixin , CreationTimeFilterMixin
+from core.mixins import GenderFilterMixin , LocationFilterMixin , CreationTimeFilterMixin
 from .models import JobSeeker
 
 

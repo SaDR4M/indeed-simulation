@@ -53,7 +53,7 @@ sign_up_document = swagger_auto_schema(
 
 sign_in_otp_document = swagger_auto_schema(
         operation_description="Checking the OTP that was sent to user with the entered OTP then Signin the user",
-        operation_summary="Signin",
+        operation_summary="Signin with OTP",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
@@ -80,15 +80,15 @@ sign_in_otp_document = swagger_auto_schema(
 
 
 sign_in_pass_document = swagger_auto_schema(
-            operation_summary="Sign in with password",
+            operation_summary="Signin with password",
             operation_description = "Sign in with phone number and password",
             request_body = openapi.Schema(
                 type = openapi.TYPE_OBJECT,
                 properties = {
-                    'phone' : openapi.Schema(type=openapi.TYPE_STRING, description="phone number" , minLength=11 , title="Phone"),
+                    'mobile' : openapi.Schema(type=openapi.TYPE_STRING, description="mobile number" , minLength=11 , title="Phone"),
                     'password' : openapi.Schema(type=openapi.TYPE_STRING, description="password" , minlength=8 , title="Password"),
                 },
-                required = ['phone','password'],
+                required = ['mobile','password'],
             ),
             responses = {
 
@@ -106,8 +106,8 @@ sign_in_pass_document = swagger_auto_schema(
 )
 
 update_credential_document = swagger_auto_schema(
-    operation_summary = "update user information",
-    operation_description = "Update user information.the password must be at least 8 char and combination of characters and numbers",
+    operation_summary = "Update user password",
+    operation_description = "Update user password.the password must be at least 8 char and combination of characters and numbers",
     request_body = openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
@@ -121,7 +121,7 @@ update_credential_document = swagger_auto_schema(
                 description="confirm the new password", minlength=8,type=openapi. TYPE_STRING),
             
         },
-        required=['password , new_password' , 'confirm_password']
+        required=['old_password' , 'new_password' , 'confirm_password']
     ),
     responses = {
         200: openapi.Response(

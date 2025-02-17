@@ -1,5 +1,7 @@
 # built-in
+import re
 from user_agents import parse
+import uuid
 # django & rest imports
 from django.core.cache import cache
 from django.contrib.auth.hashers import make_password
@@ -79,6 +81,23 @@ def create_token(user:object) :
         status = HTTP_200_OK
     )  
     
+    
+    
+def create_otp(mobile) :
+    # create otp code
+    otp = str(uuid.uuid4().int)[:5]
+    key = f'OTP:{mobile}'
+        
+    if cache.get(key):  # pass the sms code sending if we already have send an sms to user
+        return Response(
+            data = {
+            "succeeded": False,
+            "remain_time": cache.ttl(key),
+            }, 
+            status=HTTP_200_OK
+        )
+    return otp
+
 def check_user_birthday(user) :
         today = datetime.today()
         today_is_birthday = False
@@ -119,7 +138,7 @@ def signin_user(request , user_obj) :
     """sign in user with OTP"""
     refresh = RefreshToken.for_user(user_obj)
     # check user birthday 
-    # today_is_birthday = check_user_birthday(user_obj)
+    today_is_birthday = check_user_birthday(user_obj)
     # need_complete_profile = user_obj.need_complete       
     # user should change their password if they login successfully via this method. so:
     user_serialized = UserSerializer(
@@ -133,7 +152,7 @@ def signin_user(request , user_obj) :
     # successful login
     response_json = {
         "succeeded": True,
-        # "today_is_birthday": today_is_birthday,
+        "today_is_birthday": today_is_birthday,
     }
     # user log for LOGIN
     create_user_log(user_obj, request, kind=0)
@@ -278,6 +297,19 @@ def validate_user_password(password:str) :
         )
     return True
 
+
+
+def validate_user_mobile(mobile) :
+    mobile_validate = re.search("^(0|0098|98|\+98)9(0[1-5]|[1 3]\d|2[0-2]|9[1 8 9])\d{7}$", mobile)
+    if not mobile_validate:
+        response_json = {
+            'succeeded': False,
+            'show': True,
+            'en_detail': 'Mobile is not correct',
+            'fa_detail': 'ساختار شماره تلفن همراه نادرست است',
+        }
+        return Response(response_json, status=HTTP_400_BAD_REQUEST)
+    return True
 
 def update_user_password(user:object , old_password:str , new_password:str , confirm_password:str ) :
     """update user password"""

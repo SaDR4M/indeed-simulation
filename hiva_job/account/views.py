@@ -2,7 +2,7 @@
 import re
 import uuid
 # django & rest imports
-from django.contrib.auth.hashers import make_password , check_password
+from django.contrib.auth.hashers import make_password
 from django.core.cache import cache
 from django.contrib.auth.hashers import make_password
 from rest_framework.response import Response
@@ -13,12 +13,8 @@ from rest_framework import status
 from rest_framework.permissions import IsAdminUser, IsAuthenticated , AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.validators import ValidationError as rest_validation_error
 # third party imports
 from icecream import ic
-from drf_yasg import openapi
-from drf_yasg.utils import swagger_auto_schema
-from rest_framework_simplejwt.tokens import RefreshToken
 # local imports
 from account.models import User
 from account.utils import  (signin_user ,
@@ -26,6 +22,8 @@ from account.utils import  (signin_user ,
                             check_otp ,
                             signin_user_wp ,
                             update_user_password,
+                            validate_user_mobile,
+                            create_otp
                             )
 from notifications.models import SmsCategory
 from core.send_sms import send_sms
@@ -47,46 +45,38 @@ class UserOTPApiView(APIView):
         save the OTP has hash
         '''
         # filtering user
+        # validate user mobile
         mobile = request.data.get("mobile")
-        mobile_validate = re.search("^(0|0098|98|\+98)9(0[1-5]|[1 3]\d|2[0-2]|9[1 8 9])\d{7}$", mobile)
-        if not mobile_validate:
-            response_json = {
-                'succeeded': False,
-                'show': True,
-                'en_detail': 'Mobile is not correct',
-                'fa_detail': 'ساختار شماره تلفن همراه نادرست است',
-            }
-            return Response(response_json, status=HTTP_400_BAD_REQUEST)
+        validated_mobile = validate_user_mobile(mobile)
+        if isinstance(validate_user_mobile , Response) :
+            return validated_mobile
+    
         with_call = False
         if request.data.get("with_call") == 'true':
             with_call = True      
-        # create otp code
-        otp = str(uuid.uuid4().int)[:5]
+
+        # create otp
+        otp = create_otp(mobile)
+        if isinstance(otp , Response) :
+            return otp
+        
         # TODO Security: Dont send code in response
         req = {
+            "succeeded": True,
             "mobile": mobile,
             "code" : otp,
         }  
 
-        req.update({
-            "succeeded": True,
-        })
-        
-        key = f'OTP:{mobile}'
-        if cache.get(key):  # pass the sms code sending if we already have send an sms to user
-            return Response({
-                "succeeded": False,
-                "remain_time": cache.ttl(key),
-                }, status=HTTP_200_OK)
-            
+        # call for the OTP
         if with_call == True:
             req.update({
                 "send_with" : "CALL"
                 })
             make_call(
-                request.data.get("mobile"),
+                receptor = mobile,
                 message = otp,
             )
+        # send message for OTP
         else:
             # NOTE create sms category objects otherwise it will cause an error
             # FIXME fix this
@@ -104,15 +94,15 @@ class UserOTPApiView(APIView):
             req.update({
                 "send_with": 'SMS',
                 })
-        ## TODO remove code from response
+        # TODO remove code from response
         user_exists = User.objects.filter(mobile=mobile).exists()
         req.update({
-            "succeeded": True,
             "user_exists" : user_exists,
             "send_otp": True,
             "remain_time": 60,
         })
         ic(req)
+        # save OTP
         hashed_otp =  make_password(otp)
         cache.set(f'OTP:{mobile}', hashed_otp, 60)
         return Response(req, status=HTTP_200_OK)

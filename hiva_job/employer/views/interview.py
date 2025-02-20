@@ -12,7 +12,7 @@ from employer.serializers import (
 from employer.models import InterviewSchedule
 from employer.utils import employer_exists
 from employer.mixins import InterviewScheduleMixin , FilterInterviewScheduleMixin
-from employer .docs import (
+from employer.docs import (
     interview_schedule_get_doc,
     interview_schedule_post_doc
 )

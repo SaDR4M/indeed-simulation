@@ -4,7 +4,7 @@ from rest_framework.validators import ValidationError
 from rest_framework import serializers
 
 # local import
-from employer.models import Employer, JobOpportunity, ViewedResume, EmployerCartItem, EmployerCart, EmployerOrder, EmployerOrderItem  , InterviewSchedule, ViewedAppliedResume
+from employer.models import Employer, JobOpportunity, ViewedResume, InterviewSchedule, ViewedAppliedResume
 from package.models import Package
 from job_seeker.models import Resume , Application 
 
@@ -14,14 +14,12 @@ class EmployerSerializer(serializers.ModelSerializer) :
         exclude = ['user'  , 'province', 'city']
         
 
-
 class JobOpportunitySerializer(serializers.ModelSerializer) :
     # package_purchase_id = serializers.PrimaryKeyRelatedField(queryset=PurchasedPackage.objects.all())
     class Meta :
         model = JobOpportunity
         exclude = ['employer' , 'province', 'city']
     
-
     def validate(self , attrs) :
         if self.partial :
             offer_id = attrs.get('offer_id')
@@ -35,21 +33,25 @@ class JobOpportunitySerializer(serializers.ModelSerializer) :
             #     attrs['active'] = True
         return attrs
     
+    
 class GetJobOpportunitySerializer(serializers.ModelSerializer) :
     class Meta :
         model = JobOpportunity
         fields = '__all__'
+   
     
 class ViewedResumeSerializer(serializers.ModelSerializer) :
     resume = serializers.PrimaryKeyRelatedField(queryset=Resume.objects.all())
     class Meta :
         model = ViewedResume
         exclude = ["employer"]
+   
         
 class GetViewedResumeSerializer(serializers.ModelSerializer) :
     class Meta:
         model = ViewedResume
         fields = '__all__'        
+      
         
 class AppliedViewedResumeSerializer(serializers.ModelSerializer) :
     class Meta :
@@ -62,42 +64,17 @@ class GetAppliedViewedResumeSerializer(serializers.ModelSerializer) :
         fields = '__all__'
 
 
-
 class ChangeApllyStatusSerializer(serializers.ModelSerializer) :
     # id = serializers.PrimaryKeyRelatedField(queryset=Application.objects.all())
     class Meta :
         model = Application
         fields = ["status"]
     
-class CartSerializer(serializers.ModelSerializer) :
-    class Meta :
-        model = EmployerCart
-        exclude = ['employer']
-
-class CartItemSerializer(serializers.ModelSerializer) :
-    # package = serializers.PrimaryKeyRelatedField(queryset=Package.objects.all())
-    class Meta :
-        model = EmployerCartItem
-        exclude = ['cart' , 'package']
-
-class OrderSerializer(serializers.ModelSerializer) :
-    class Meta :
-        model = EmployerOrder
-        exclude = ['employer' , 'order_id' ,'payment']
-
-class OrderItemSerializer(serializers.ModelSerializer) :
-    package = serializers.PrimaryKeyRelatedField(queryset=Package.objects.all())
-    class Meta:
-        model = EmployerOrderItem
-        exclude = ['order']
-
-
 
 class InterviewScheduleSerializer(serializers.ModelSerializer) :
     class Meta:
         model = InterviewSchedule
         fields = '__all__'
-
 
 
 class ChangeInterviewEmployerScheduleSerializer(serializers.ModelSerializer) :

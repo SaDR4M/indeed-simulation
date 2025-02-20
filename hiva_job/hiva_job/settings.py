@@ -66,7 +66,8 @@ INSTALLED_APPS = [
     'payment',
     'employer',
     'job_seeker',
-    'package'
+    'package',
+    'order'
     # 'channels'
 
 

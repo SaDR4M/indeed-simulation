@@ -42,37 +42,6 @@ class JobOpportunity(GenderMixin):
     # i changed the data type of this column manually in the DB
     expire_at = models.DateTimeField()
 
-# basket package
-class EmployerCart(models.Model) :
-    employer =  models.ForeignKey("employer.Employer" , on_delete=models.CASCADE ,  related_name="carts")
-    active = models.BooleanField(default=True)
-    added_at = models.DateTimeField(auto_now_add=True)
-    
-# basket items
-class EmployerCartItem(models.Model) :
-    cart = models.ForeignKey(EmployerCart  , on_delete=models.CASCADE , related_name="cart_items")
-    package = models.ForeignKey("package.Package" , on_delete=models.CASCADE)
-    added_at = models.DateTimeField(auto_now_add=True)
-
-class EmployerOrder(models.Model) :
-    
-    class OrderStatus(models.TextChoices) :
-        COMPLETED = "completed"
-        PENDING = "pending"
-        FAILED = "failed"
-        REFUNDED = "refunded"
-        
-    employer = models.ForeignKey("employer.Employer" , on_delete=models.CASCADE , related_name="orders")
-    payment = models.OneToOneField("payment.Payment" , on_delete=models.CASCADE , related_name="order")
-    status = models.CharField(choices=OrderStatus , default=OrderStatus.PENDING)
-    order_at = models.DateTimeField(auto_now_add=True)
-    order_id = models.IntegerField()
-
-class EmployerOrderItem(models.Model) :
-    order = models.ForeignKey(EmployerOrder , on_delete=models.CASCADE , related_name="order_items")
-    package = models.ForeignKey("package.Package" , on_delete=models.CASCADE , related_name="packages")
-    added_at = models.DateTimeField(auto_now_add=True)
-
 
 class ViewedResume(models.Model) :
     resume = models.ForeignKey("job_seeker.Resume" , on_delete=models.CASCADE) 
@@ -97,7 +66,7 @@ class InterviewSchedule(models.Model) :
     apply = models.OneToOneField("job_seeker.Application" , on_delete=models.CASCADE , related_name="schedules")
     job_seeker_time = models.DateTimeField(null=True , blank=True)
     employer_time = models.DateTimeField(null=True , blank=True)
-    interview_time= models.DateTimeField(null=True , blank=True)
+    interview_time = models.DateTimeField(null=True , blank=True)
     status = models.CharField(choices=InterViewStatus , default=InterViewStatus.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
 

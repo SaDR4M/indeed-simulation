@@ -1,27 +1,23 @@
-from django.shortcuts import render
-# third party imports
+
+# django & rest
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
-from drf_yasg.utils import swagger_auto_schema
 from django.db import transaction
-from .models import Payment
-from employer.models import EmployerCart
-from celery.result import AsyncResult
+# third party imports
+from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from guardian.shortcuts import assign_perm
 # local imports
 from .serializers import PaymentSerializer , GetPaymentSerializer
-from employer.models import Employer
 from employer.utils import employer_exists
 from . import utils
 from .mixins import FitlerPaymentMixin
 from .utils import verify_payment
 from . import tasks
-from employer.models import EmployerCart , EmployerOrder , EmployerCartItem , EmployerOrderItem 
+from .models import Payment
 from employer.serializers import OrderSerializer , OrderItemSerializer
-from account.models import Message
-from account.tasks import send_order_sms ,  send_order_email
-from guardian.shortcuts import assign_perm
+from order.models import Cart
 
 # Create your views here.
 
@@ -76,8 +72,8 @@ class PaymentProcess(APIView) :
                 # get the items in the cart
                 # TODO optimize the query with prefetch related
                 try :
-                    cart = EmployerCart.objects.get(employer=employer , active=True)
-                except EmployerCart.DoesNotExist :
+                    cart = Cart.objects.get(employer=employer , active=True)
+                except Cart.DoesNotExist :
                     return Response(data={"detail" : "cart is empty"} , status=status.HTTP_404_NOT_FOUND)
                 # items in the active cart that will be order
                 items = cart.cart_items.all()
@@ -103,7 +99,7 @@ class PaymentProcess(APIView) :
                 # deactivate the Cart and saving the data
                 order_id = utils.create_random_number()
                 order = order_serializer.save(employer=employer , order_id = order_id , payment=payment)
-                assign_perm("view_employerorder" , user , order)
+                assign_perm("view_order" , user , order)
                 item_serializer.save(order=order)
                 cart.active = False
                 cart.save()

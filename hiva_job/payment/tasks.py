@@ -5,7 +5,7 @@ from guardian.shortcuts import assign_perm
 # local imports 
 from account.models import Message
 from account.tasks import send_order_email , send_order_sms
-from employer.models import EmployerOrder
+from order.models import Order
 from package.models import PurchasedPackage
 from .models import Payment  # ensure this is imported properly
 
@@ -17,7 +17,7 @@ def fail_payment_if_unpaid(self, payment_id, retry_count=0):
         order = payment.order
     except Payment.DoesNotExist:
         return "Payment doesn't exist"
-    except EmployerOrder.DoesNotExist:
+    except Order.DoesNotExist:
         return "Order doesn't exist"
 
     payment_status = utils.verify_payment(payment.authority, payment.amount)

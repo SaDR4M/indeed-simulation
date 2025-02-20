@@ -123,9 +123,6 @@ class SignInApiView(APIView):
         # if otp is not correct return response
         if isinstance(is_otp_correct , Response) :
             return is_otp_correct
-        # user = User.objects.get(
-        #         mobile = mobile
-        #     )
         try :
             user = User.objects.get(
                 mobile = mobile
@@ -210,7 +207,7 @@ class SignInWithPassApiView(APIView):
 
 # add/update credentials info
 class UpdateCredential(APIView) :
-    
+    """Update user password"""
     permission_classes = [IsAuthenticated]
     @update_credential_document
     def patch(self , request):

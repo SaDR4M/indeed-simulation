@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path='../.env')
 # local imports
 from payment.models import Payment
-from employer.models import EmployerCartItem
+from order.models import CartItem
 
 CALLBACK_URL = "http://127.0.0.1:8000/account/data"
 DESCRIPTION = 'خرید محصول'
@@ -66,7 +66,7 @@ def create_random_number() :
 
 def calc_order_amount(employer) : 
     total_price = 0
-    cart_items = EmployerCartItem.objects.filter(cart__employer=employer , cart__active=True)
+    cart_items = CartItem.objects.filter(cart__employer=employer , cart__active=True)
     if not cart_items.exists() :
         return None
     for item in cart_items :

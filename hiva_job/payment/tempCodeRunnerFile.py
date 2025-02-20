@@ -1,1 +1,0 @@
-API_KEY = os.getenv('SMS_API_KEY')

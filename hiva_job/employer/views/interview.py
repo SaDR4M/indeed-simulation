@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK , HTTP_400_BAD_REQUEST , HTTP_404_NOT_FOUND
 # local imports
 from employer.serializers import (
-                          ChangeInterviewEmployerScheduleSerializer ,
+                          ChangeEmployerInterviewScheduleSerializer ,
                           InterviewScheduleSerializer
                           )
                           
@@ -58,7 +58,7 @@ class EmployerInterviewSchedule(APIView , InterviewScheduleMixin , FilterIntervi
             return conflict
 
         
-        serializer = ChangeInterviewEmployerScheduleSerializer(interview ,data=request.data , partial=True)
+        serializer = ChangeEmployerInterviewScheduleSerializer(interview ,data=request.data , partial=True)
         if serializer.is_valid() :  
             job_seeker_time = interview.job_seeker_time
             employer_time = serializer.validated_data['employer_time']

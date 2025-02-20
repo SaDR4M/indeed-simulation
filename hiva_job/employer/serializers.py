@@ -76,8 +76,8 @@ class InterviewScheduleSerializer(serializers.ModelSerializer) :
         model = InterviewSchedule
         fields = '__all__'
 
-
-class ChangeInterviewEmployerScheduleSerializer(serializers.ModelSerializer) :
+# ChangeEmployerInterviewScheduleSerializer
+class ChangeEmployerInterviewScheduleSerializer(serializers.ModelSerializer) :
     employer_time = serializers.DateTimeField(required=False)
     class Meta :
         model = InterviewSchedule

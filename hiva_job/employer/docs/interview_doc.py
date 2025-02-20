@@ -2,7 +2,7 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 # local imports
-from employer.serializers import ChangeInterviewEmployerScheduleSerializer
+from employer.serializers import ChangeEmployerInterviewScheduleSerializer
 from order.serializers import OrderSerializer
 
 interview_schedule_get_doc = swagger_auto_schema(
@@ -28,7 +28,7 @@ interview_schedule_get_doc = swagger_auto_schema(
 interview_schedule_post_doc = swagger_auto_schema(
         operation_summary="update the interview time of the job apply ",
         operation_description="employer can suggest the time of the interview then if the job seeker accept it will be set as interview time",
-        request_body=ChangeInterviewEmployerScheduleSerializer,
+        request_body=ChangeEmployerInterviewScheduleSerializer,
         responses={
             200 : "success",
             400 : "invalid parameters",

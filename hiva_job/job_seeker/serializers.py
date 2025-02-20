@@ -35,8 +35,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
         model = Application
         exclude = ['job_seeker' , 'job_opportunity' , 'status']
 
-
-class ChangeInterviewJobSeekerScheduleSerializer(serializers.ModelSerializer) :
+# ChangeJobSeekerInterviewScheduleSerializer
+class ChangeJobSeekerInterviewScheduleSerializer(serializers.ModelSerializer) :
     job_seeker_time = serializers.DateTimeField(required=False)
     class Meta :
         model = InterviewSchedule

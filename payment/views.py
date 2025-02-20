@@ -16,7 +16,7 @@ from .mixins import FitlerPaymentMixin
 from .utils import verify_payment
 from . import tasks
 from .models import Payment
-from employer.serializers import OrderSerializer , OrderItemSerializer
+from order.serializers import OrderSerializer , OrderItemSerializer
 from order.models import Cart
 
 # Create your views here.

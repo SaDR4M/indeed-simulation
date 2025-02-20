@@ -6,8 +6,8 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser
 
 # local imports
-from employer.models import Resume 
-from employer.serializers import  ResumeSerializer , GetResumeSerializer 
+from job_seeker.models import Resume 
+from job_seeker.serializers import  ResumeSerializer , GetResumeSerializer 
 from employer import utils
 from job_seeker.docs import (
     resume_register_get_doc,

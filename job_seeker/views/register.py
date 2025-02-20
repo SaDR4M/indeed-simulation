@@ -7,8 +7,8 @@ from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 # local imports
 from employer.models import JobOpportunity
-from employer.models import JobSeeker
-from employer.serializers import JobSeekerSerializer
+from job_seeker.models import JobSeeker
+from job_seeker.serializers import JobSeekerSerializer
 from employer import utils
 from job_seeker.docs import (
     job_seeker_register_get_doc,

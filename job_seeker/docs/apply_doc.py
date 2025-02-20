@@ -2,7 +2,7 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 # local
-from employer.serializers import  ApplicationSerializer 
+from job_seeker.serializers import  ApplicationSerializer 
 
 
 apply_for_job_get_doc = swagger_auto_schema(

@@ -8,7 +8,7 @@ from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 
 # local imports
-from employer.serializers import  ChangeJobSeekerInterviewScheduleSerializer 
+from job_seeker.serializers import  ChangeJobSeekerInterviewScheduleSerializer 
 from employer import utils
 from employer.serializers import InterviewScheduleSerializer
 from employer.models import InterviewSchedule  

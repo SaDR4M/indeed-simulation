@@ -6,8 +6,8 @@ from rest_framework.views import APIView
 from guardian.shortcuts import assign_perm 
 # local imports
 from employer.models import JobOpportunity
-from employer.models import Application 
-from employer.serializers import  ApplicationSerializer 
+from job_seeker.models import Application 
+from job_seeker.serializers import  ApplicationSerializer 
 from employer import utils
 from job_seeker.docs import (
     applies_for_job_get_doc,

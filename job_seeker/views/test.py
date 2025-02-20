@@ -5,8 +5,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from guardian.shortcuts import assign_perm , get_objects_for_user
 # local imports
-from employer.models import JobSeeker, Resume , Test , Question , Answer
-from employer.serializers import TestSerializer , QuestionSerializer , AnswerSerializer
+from job_seeker.models import JobSeeker, Resume , Test , Question , Answer
+from job_seeker.serializers import TestSerializer , QuestionSerializer , AnswerSerializer
 
 from employer import utils
 # Create your views here.

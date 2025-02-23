@@ -18,7 +18,7 @@ class JobOpportunitySerializer(serializers.ModelSerializer) :
     # package_purchase_id = serializers.PrimaryKeyRelatedField(queryset=PurchasedPackage.objects.all())
     class Meta :
         model = JobOpportunity
-        exclude = ['employer' , 'province', 'city']
+        exclude = ['employer' , 'province', 'city' , 'active' , 'status']
     
     def validate(self , attrs) :
         if self.partial :

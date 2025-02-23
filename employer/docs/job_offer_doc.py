@@ -21,7 +21,18 @@ job_offer_get_doc =  swagger_auto_schema(
 job_offer_post_doc = swagger_auto_schema(
     operation_summary="create the job opportunity",
     operation_description="create job opportunity if the employer exists and have active packages and the permission",
-    request_body=JobOpportunitySerializer,
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            "priority" : openapi.Schema(type=openapi.TYPE_STRING ,description="priority of the offer \n options are : \n 1) normal \n 2) urgent"),
+            "title" : openapi.Schema(type=openapi.TYPE_STRING , description="title of the job offer"),
+            "description" : openapi.Schema(type=openapi.TYPE_STRING , description="description of the job offer"),
+            "expire_at" : openapi.Schema(type=openapi.TYPE_STRING , description="date of expiring this offer"),
+            "province" : openapi.Schema(type=openapi.TYPE_STRING , description="province of the job offer"),
+            "city" : openapi.Schema(type=openapi.TYPE_STRING , description="city of the job offer"),
+        },
+        required=["title" , "description" , "province" , "city"]
+        ),
     responses={
         200 : JobOpportunitySerializer,
         400 : "invalid parameters",

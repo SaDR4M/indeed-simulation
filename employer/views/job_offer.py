@@ -15,7 +15,7 @@ from employer.mixins import FilterJobOpportunityMixin
 from employer import docs 
 from account.models import Message
 from employer import tasks
-
+from location.utils import get_city , get_province
 # Create your views here.
 class JobOffer(APIView , FilterJobOpportunityMixin) :
     
@@ -25,7 +25,7 @@ class JobOffer(APIView , FilterJobOpportunityMixin) :
         # check for employer exist
         employer = employer_exists(user)
         if not employer :
-            return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
+            return Response(data={"en_detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
         # check for offers to exist
         job_opportunities = JobOpportunity.objects.filter(employer=employer)
         # if not job_opportunities.exists() :
@@ -56,23 +56,46 @@ class JobOffer(APIView , FilterJobOpportunityMixin) :
         # check for employer to exist
         employer = employer_exists(user)
         if not employer :
-            return Response(data={"detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
+            return Response(data={"en_detail" : "employer does not exists"} , status=HTTP_404_NOT_FOUND)
         # check the employer package purchased and order it base on the date of purchase
         purchased_packages = can_create_offer(employer  , priority)
         # check that user can make offer or not
         if not purchased_packages :
-            return Response(data={"detail" : "there is no purchase package for this user" , "success" : False} , status=HTTP_404_NOT_FOUND)
+            return Response(
+                data = {
+                    "succeeded" : False,
+                    "show" : True,
+                    "en_detail" : "there is no purchase package for this user" , 
+                    "fa_detail" : "پکیج فعالی برای شما یافت نشد"
+                } ,
+                status=HTTP_404_NOT_FOUND
+            )
         # check the remaining count of request pacakge
         # *implementing this util is wrong cause if the serialzier is be  invalid (for any reason ) the remaining will be minus but the offer will not save*
         if not check_package_remaining(purchased_packages) :
-            return Response(data={"detail" : "there is no remaining for this package"} , status=HTTP_404_NOT_FOUND)
+            return Response(
+                data={
+                    "succeeded" : False,
+                    "show" : True,
+                    "en_detail" : "there is no remaining for this package",
+                    "fa_detail" : "به سقف استفاده از ثبت رزومه با پکیج فعلی رسیده اید"
+                    } , 
+                status=HTTP_404_NOT_FOUND)
         # save the date
         serializer = JobOpportunitySerializer(data=request.data)
         if serializer.is_valid() :
             # adding city and country
             # TODO fix this
-            city = request.data.get("city")
-            province = request.data.get("province")
+
+            province_id = request.data.get('province')
+            province = get_province(province_id=province_id)
+            if isinstance(province , Response) :
+                return province
+            
+            city_id = request.data.get('city')
+            city = get_city(province_id=province_id , city_id=city_id)
+            if isinstance(city , Response) :
+                return city
             
             offer = serializer.save(employer=employer , city=city , province=province)
             purchased_packages.remaining -= 1

@@ -22,13 +22,19 @@ class Employer(models.Model):
 
     
 # opportunity that employer makes
-class JobOpportunity(GenderMixin):
+class JobOpportunity(models.Model):
         
     class OfferStatus(models.TextChoices) :
         REGISTRED = "registered" , "Registered"
         CONFIRMED = "approved" , "Approved"
         CANCELED = "canceled" , "Canceled"
         EXPIRED = "expired" , "Expired"
+    
+    class GenderChoices(models.TextChoices) :
+        MALE = "male"
+        FEMALE = "female"
+        UNISEX = "unisex"
+        
         
     employer = models.ForeignKey("employer.Employer" , on_delete=models.CASCADE , related_name="job_opportunities")
     active = models.BooleanField(default=False)
@@ -38,6 +44,7 @@ class JobOpportunity(GenderMixin):
     created_at = models.DateTimeField(auto_now_add=True)
     province = models.ForeignKey(Provinces , related_name="job_states" , on_delete=models.CASCADE , help_text="province of the offer . default is Tehran")
     city = models.ForeignKey(Cities , related_name="job_offers" , on_delete=models.CASCADE , default=301 , help_text="city of the offer . default is Tehran")
+    gender = models.CharField(choices=GenderChoices , default=GenderChoices.UNISEX)
     # i changed the data type of this column manually in the DB
     expire_at = models.DateTimeField()
 

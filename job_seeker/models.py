@@ -23,9 +23,8 @@ class TestStatusMixin(models.Model) :
 class JobSeeker(GenderMixin):
     
     user = models.OneToOneField(User, on_delete=models.CASCADE , related_name='job_seeker')
-    bio = models.TextField(blank=True , null=True)
+    bio = models.TextField(blank=True , null=True , help_text="a brief text about the job seeker")
     created_at = models.DateTimeField(auto_now_add=True)
-    birthday = models.DateField()
     province = models.ForeignKey(Provinces , related_name="state_jobseekers" , on_delete=models.CASCADE , default=8)
     city = models.ForeignKey(Cities , related_name="city_jobseekers" , on_delete=models.CASCADE , default=301)
    

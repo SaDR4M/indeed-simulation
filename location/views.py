@@ -5,10 +5,14 @@ from rest_framework.status import HTTP_200_OK , HTTP_400_BAD_REQUEST
 # local 
 from location.models import Cities , Provinces
 from location.serializer import CitiesSerializer , ProvincesSerializer
+from location.docs import all_cities , all_provinces ,province_cities
 # Create your views here.
 
 class ListOfProvinces(APIView) :
+    
+    @all_provinces
     def get(self , request) :
+        """list of all provinces"""
         provinces = Provinces.objects.all()
         serializer = ProvincesSerializer(provinces , many=True)
         return Response(
@@ -18,7 +22,10 @@ class ListOfProvinces(APIView) :
 
 
 class ListOfCities(APIView) :
+    
+    @all_cities
     def get(self , request) :
+        """list of all cities"""
         cities = Cities.objects.all()
         serializer = CitiesSerializer(cities , many=True)
         return Response(
@@ -28,8 +35,11 @@ class ListOfCities(APIView) :
 
 
 class ListOfProvinceCities(APIView) :
+    
+    @province_cities
     def get(self , request) :
-        province = request.data.get("province_id")
+        """get list of cities for a province"""
+        province = request.query_params.get("province_id")
         
         if not province :
             return Response(

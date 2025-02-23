@@ -23,6 +23,7 @@ class EmployerRegister(APIView) :
         if not employer :
             return Response(data={"detail" : "there is no employer assign to this user"} , status=HTTP_404_NOT_FOUND)
         # check for the user permission
+        # FIXME fix the (AttributeError: 'User' object has no attribute 'has_perm')
         # if not user.has_perm('view_employer' , employer) :
         #     return Response(data={"detail" : "user does not have permission to view this"} , status=HTTP_403_FORBIDDEN)
         serializer = EmployerSerializer(employer)

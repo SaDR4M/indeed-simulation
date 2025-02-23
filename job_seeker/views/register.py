@@ -9,12 +9,13 @@ from drf_yasg.utils import swagger_auto_schema
 from employer.models import JobOpportunity
 from job_seeker.models import JobSeeker
 from job_seeker.serializers import JobSeekerSerializer
-from employer import utils
+from job_seeker import utils
 from job_seeker.docs import (
     job_seeker_register_get_doc,
     job_seeker_register_post_doc,
     job_seeker_register_patch_doc,
 )
+from location.utils import get_city , get_province
 # Create your views here.
 class JobSeekerRegister(APIView) :
     @job_seeker_register_get_doc
@@ -23,10 +24,11 @@ class JobSeekerRegister(APIView) :
         # finding the job seeker information
         job_seeker = utils.job_seeker_exists(user)
         if not job_seeker :
-            return Response(data={"detail" : "there is no job seeker asign to this user"} , status=status.HTTP_404_NOT_FOUND)
+            return Response(data={"detail" : "there is no job seeker assigned to this user"} , status=status.HTTP_404_NOT_FOUND)
         # get the job seeker information
-        if not user.has_perm('view_job_seeker' , job_seeker ):
-            return Response(data={"detail" : "user does not have permission to view this"} , status=status.HTTP_403_FORBIDDEN)
+        # FIXME fix the (AttributeError: 'User' object has no attribute 'has_perm')
+        # if not user.has_perm('view_job_seeker' , job_seeker ):
+        #     return Response(data={"detail" : "user does not have permission to view this"} , status=status.HTTP_403_FORBIDDEN)
         serializer = JobSeekerSerializer(job_seeker)
         return Response(data={"detail" : serializer.data}, status=status.HTTP_200_OK)
     
@@ -43,10 +45,17 @@ class JobSeekerRegister(APIView) :
             data = serializer.validated_data
             data['user'] = user
             # adding the city and country
-            # TODO fix this
-            city = request.data.get('city')
-            province = request.data.get('province')
-            job_seeker = serializer.save(city=city , province=province)
+            province_id = request.data.get('province')
+            province = get_province(province_id=province_id)
+            if isinstance(province , Response) :
+                return province
+            
+            city_id = request.data.get('city')
+            city = get_city(province_id=province_id , city_id=city_id)
+            if isinstance(city , Response) :
+                return city
+            
+            job_seeker = serializer.save(user=user , city=city , province=province)
             # assign base permission
             utils.assign_base_permissions(user, job_seeker, "jobseeker")
             # change user role

@@ -44,5 +44,6 @@ urlpatterns = [
     path('job-seeker/' , include('job_seeker.urls')),
     path('payment/' , include('payment.urls')),
     path('package/' , include('package.urls') ),
-    path('manager/' , include("manager.urls"))
+    path('manager/' , include("manager.urls")),
+    path('location/' , include("location.urls")),
 ]

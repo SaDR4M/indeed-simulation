@@ -14,7 +14,7 @@ from employer.utils import employer_exists
 from job_seeker.utils import job_seeker_exists
 from job_seeker.serializers import GetResumeSerializer 
 from job_seeker.models import Resume
-from account.models import Cities , Provinces
+from location.models import Cities , Provinces
 from core.mixins import GenderFilterMixin , LocationFilterMixin , CreationTimeFilterMixin
 from package.mixins import FilterPackageMixin
 from .models import JobOpportunity

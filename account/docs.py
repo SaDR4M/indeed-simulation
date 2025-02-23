@@ -2,7 +2,7 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 
-
+USER_ROLE = "0 : pre register , 1 : employer , 2 : job seeker , 3 : operator , 10 : admin"
 otp_document = swagger_auto_schema(
         operation_description="Sending OTP to the user mobile",
         operation_summary="Sending OTP",
@@ -17,7 +17,8 @@ otp_document = swagger_auto_schema(
         responses={
             200 : "OTP is sent to the user",
             400 : "Wrong mobile number format"
-        }
+        },
+        security = [{"Bearer": []}]
     )
 
 
@@ -31,8 +32,9 @@ sign_up_document = swagger_auto_schema(
                 "otp" : openapi.Schema(description="otp" , type=openapi.TYPE_STRING , minlength=5),
                 "birthday" : openapi.Schema(description="user birthday" , type=openapi.TYPE_STRING),
                 "password" : openapi.Schema(description="user password" , type=openapi.TYPE_STRING),
+                "role" : openapi.Schema(description=USER_ROLE , type=openapi.TYPE_STRING)
             },
-            required=["mobile" , "otp" , "birthday" , "password"]
+            required=["mobile" , "role" , "otp" , "birthday" , "password"]
         ),
 
         responses={
@@ -47,7 +49,8 @@ sign_up_document = swagger_auto_schema(
                 }
             ),
             400 : "Wrong OTP or OTP is expired - invalid paramters"
-        }
+        },
+        security = [{"Bearer": []}]
     )
 
 
@@ -59,8 +62,9 @@ sign_in_otp_document = swagger_auto_schema(
             properties={
                 "mobile" : openapi.Schema(description="user mobile" , type=openapi.TYPE_STRING , minlength=11),
                 "otp" : openapi.Schema(description="otp" , type=openapi.TYPE_STRING , minlength=5),
+                "role" : openapi.Schema(description=USER_ROLE , type=openapi.TYPE_STRING , minlength=5)
             },
-            required=["mobile" , "otp"]
+            required=["mobile" , "role" , "otp"]
         ),
 
         responses={
@@ -75,7 +79,8 @@ sign_in_otp_document = swagger_auto_schema(
                 }
             ),
             400 : "Wrong OTP or OTP is expired"
-        }
+        },
+        security = [{"Bearer": []}]
     )
 
 
@@ -87,8 +92,9 @@ sign_in_pass_document = swagger_auto_schema(
                 properties = {
                     'mobile' : openapi.Schema(type=openapi.TYPE_STRING, description="mobile number" , minLength=11 , title="Phone"),
                     'password' : openapi.Schema(type=openapi.TYPE_STRING, description="password" , minlength=8 , title="Password"),
+                    'role' : openapi.Schema(type=openapi.TYPE_STRING , description=USER_ROLE , minlength=5 , title="Role")
                 },
-                required = ['mobile','password'],
+                required = ['mobile','role','password'],
             ),
             responses = {
 
@@ -102,7 +108,8 @@ sign_in_pass_document = swagger_auto_schema(
                     }
                     ),
                 400 : 'invalid parameters',
-            }
+            },
+            security = [{"Bearer": []}]
 )
 
 update_credential_document = swagger_auto_schema(

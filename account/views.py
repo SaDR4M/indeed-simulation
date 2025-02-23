@@ -118,14 +118,16 @@ class SignInApiView(APIView):
     def post(self,request):
         ''' login/sign up'''
         mobile = request.data.get("mobile")
-        otp = request.data.get('otp')
+        otp = request.data.get("otp")
+        role = request.data.get("role")
         is_otp_correct = check_otp(mobile , otp)
         # if otp is not correct return response
         if isinstance(is_otp_correct , Response) :
             return is_otp_correct
         try :
             user = User.objects.get(
-                mobile = mobile
+                mobile = mobile,
+                role = role
             )
         except User.DoesNotExist :
             return Response(
@@ -188,6 +190,7 @@ class SignInWithPassApiView(APIView):
     def post(self , request):
 
         mobile = request.data.get("mobile")
+        role = request.data.get("role")
         password = request.data.get('password')
         # check if the user mobile or password were entered or not
         if not mobile and not password :
@@ -197,7 +200,7 @@ class SignInWithPassApiView(APIView):
         if password is None:
                return Response(data={"detail" : "password is missing"} , status=status.HTTP_400_BAD_REQUEST)
 
-        sign_in = signin_user_wp(mobile , password , request)
+        sign_in = signin_user_wp(mobile , role , password , request)
         if isinstance(sign_in , Response) :
             return sign_in
         return Response(status=HTTP_500_INTERNAL_SERVER_ERROR)

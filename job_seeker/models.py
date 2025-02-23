@@ -1,7 +1,8 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 # local import
-from account.models import User, Cities , Provinces
+from account.models import User
+from location.models import Cities , Provinces
 from core.mixins import GenderMixin
 # Create your models here.
 

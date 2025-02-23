@@ -22,12 +22,16 @@ employer_register_post_doc = swagger_auto_schema(
     operation_summary="register employer",
     operation_description="register the user if this user is not employer",
     request_body= openapi.Schema(
-         type=openapi.TYPE_OBJECT,
+        type=openapi.TYPE_OBJECT,
         properties={
+            "title" : openapi.Schema(type=openapi.TYPE_STRING , description="company name"),
+            "address" : openapi.Schema(type=openapi.TYPE_STRING , description="company address"),
+            "postal_code" : openapi.Schema(type=openapi.TYPE_STRING , description="company postal code"),
+            "id_number" : openapi.Schema(type=openapi.TYPE_STRING , description="compnay register id"),
             "province" : openapi.Schema(type=openapi.TYPE_STRING , description="Province of the employer"),
             "city" : openapi.Schema(type=openapi.TYPE_STRING , description="City of the employer"),
         },
-        required=["province" , "city"]
+        required=["title" , "address" , "postal_code" , "id_number" , "province" , "city"]
         ),
     responses= {
         201 : "employer created successfully",

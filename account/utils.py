@@ -73,13 +73,10 @@ def create_token(user:object) :
     """create token for the user"""
     token = RefreshToken.for_user(user)
     # login the user
-    return Response(
-        data = {
-            "succeeded" : True,
+    data = {
             "Authorization" : f"Token {token.access_token}"
-        },
-        status = HTTP_200_OK
-    )  
+    }
+    return data
     
     
     
@@ -99,7 +96,7 @@ def create_otp(mobile) :
     return otp
 
 def check_user_birthday(user) :
-        today = datetime.today()
+        today = datetime.today().date()
         today_is_birthday = False
         # set year to 1 check the month an day
         a = user.birthday.replace(year=1)
@@ -114,9 +111,9 @@ def check_user_birthday(user) :
         return today_is_birthday
     
 
-def check_user_existence(mobile) :
+def check_user_existence(mobile , role) :
     try :
-        user = User.objects.get(mobile=mobile)
+        user = User.objects.get(mobile=mobile , role=role)
     except User.DoesNotExist:
         return Response(
             data = {
@@ -148,16 +145,18 @@ def signin_user(request , user_obj) :
         )
     if not user_serialized.is_valid():
         return validation_error(user_serialized)
-    user_serialized.save()
+    user = user_serialized.save()
     # successful login
-    response_json = {
+    # create token for user
+    token = create_token(user)
+    token.update({
         "succeeded": True,
         "today_is_birthday": today_is_birthday,
-    }
+    })
     # user log for LOGIN
     create_user_log(user_obj, request, kind=0)
 
-    return Response(response_json, status=HTTP_200_OK)
+    return Response(token, status=HTTP_200_OK)
     
     
 def signup_user(request:object) :
@@ -188,7 +187,7 @@ def signup_user(request:object) :
         is_real = 1
     # check user exists or not
     # if the user is Repsonse it means user does not exists so we can create the user 
-    user = check_user_existence(mobile)
+    user = check_user_existence(mobile , role)
     if not isinstance(user , Response) :
         return Response(
                 data={
@@ -199,7 +198,8 @@ def signup_user(request:object) :
             )
     # validate user password
     validated_pass = validate_user_password(password)
-    if isinstance(validate_password , Response) :
+    # if something went wrong for the password validation
+    if isinstance(validated_pass , Response) :
         return validated_pass
     # user data
     # NOTE becareful with role if client pass ADMIN role the ADMIN user will be created
@@ -220,13 +220,17 @@ def signup_user(request:object) :
     user_obj = user_serialized.save()  
     # create log for LOGIN
     create_user_log(user_obj, request, kind=0)
-        
+    # create token
+    token = create_token(user_obj)
+    # user birthday
+    today_is_birthday = check_user_birthday(user_obj)
     # TODO Security:  dont send Authorization TOKEN
-    response_json = {
+    token.update({
         "succeeded": True,
-    }
+        "today_is_birthday" : today_is_birthday
+    })
         
-    return Response(response_json, status=HTTP_200_OK)    
+    return Response(token, status=HTTP_200_OK)    
 
 def check_otp(mobile:str , otp:str) :
     hashed_otp = cache.get(f"OTP:{mobile}")
@@ -252,20 +256,26 @@ def check_otp(mobile:str , otp:str) :
             }, status=HTTP_400_BAD_REQUEST)
     return True
 
-def signin_user_wp(mobile:str , password:str , request:object) :
+def signin_user_wp(mobile:str , role:str , password:str , request:object) :
     """signin user with password and the mobile number"""
     # if there is no user with the mobile number
-    user = check_user_existence(mobile)
+    user = check_user_existence(mobile , role)
     if isinstance(user , Response) :
         return user
+    today_is_birthday = check_user_birthday(user)
     # create token if the user exist and password is set
     if user is not None and user.password is not None:
         if user.check_password(password):
             # create user log
             create_user_log(user , request , kind=0)
             token = create_token(user)
-            if isinstance(token , Response) :
-                return token
+            token.update(
+                {
+                   "succeeded" : True,
+                   "today_is_birthday" : today_is_birthday
+                }
+            )
+            return Response(data=token , status=HTTP_200_OK)
         # if password is wrong
         return Response(
             data = {

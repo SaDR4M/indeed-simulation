@@ -2,7 +2,7 @@ import json
 # third party imports
 from django.db import models 
 from django.db.models import Q
-from account.models.location import Cities , Provinces
+from location.models import Cities , Provinces
 from rest_framework import status
 from rest_framework.response import Response
 # local imports

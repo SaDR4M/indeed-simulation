@@ -11,6 +11,8 @@ from employer.serializers import (
 from employer.models import Employer
 from employer.utils import employer_exists
 from employer import docs 
+from location.models import Provinces , Cities
+from location.utils import get_province , get_city
 # Create your views here.
 
 class EmployerRegister(APIView) :
@@ -21,24 +23,38 @@ class EmployerRegister(APIView) :
         if not employer :
             return Response(data={"detail" : "there is no employer assign to this user"} , status=HTTP_404_NOT_FOUND)
         # check for the user permission
-        if not user.has_perm('view_employer' , employer) :
-            return Response(data={"detail" : "user does not have permission to view this"} , status=HTTP_403_FORBIDDEN)
+        # if not user.has_perm('view_employer' , employer) :
+        #     return Response(data={"detail" : "user does not have permission to view this"} , status=HTTP_403_FORBIDDEN)
         serializer = EmployerSerializer(employer)
-        return Response(data={"detail" : serializer.data} , status=HTTP_200_OK)
+        return Response(data={"data" : serializer.data} , status=HTTP_200_OK)
 
     @docs.employer_register_post_doc
     def post(self , request) :
         # check if the employer exist or not
         user = request.user
-        employer = Employer.objects.filter(user=request.user)
+        employer = Employer.objects.filter(user=user)
 
         if employer.exists() :
-            return Response(data={"detail" : "Employer exists"} , status=HTTP_400_BAD_REQUEST)
+            return Response(
+                data={
+                    "succeeded" : False,
+                    "en_detail" : "Employer exists",
+                    "fa_detail" : "کارفرمایی  با این مشخصات وجود دارد"
+                } , 
+                status=HTTP_400_BAD_REQUEST
+                )
+        
         serializer = EmployerSerializer(data=request.data)
         if serializer.is_valid() :
             # TODO fix this
-            city = request.data.get('city')
-            province = request.data.get('province')
+            province_id = request.data.get('province')
+            city_id = request.data.get('city')
+            province = get_province(province_id=province_id)
+            if isinstance(province , Response) :
+                return province
+            city = get_city(province_id=province_id , city_id=city_id)
+            if isinstance(city , Response) :
+                return city
             # adding the user to the validated data
             employer = serializer.save(user=user , city=city, province=province)
             # assign the permission to the user

@@ -13,6 +13,7 @@ def validation_error(serialized):
             'en_detail': 'Serializer Error !! : {}'.format(serialized.errors) ,
             'fa_detail': 'خطای اعتبار سنجی در سریالایزر  داریم {}'.format(serialized.errors),
             'show': True,
+            'time' : 3000,
             'error_type': 'validation_error'
         },
         status=400
@@ -38,6 +39,7 @@ def existence_error_show(object_name,object_name_fa=''):
             'en_detail': '{} does not exist!'.format(object_name),
             'fa_detail': '{} مورد نظر وجود ندارد. '.format(object_name_fa),
             "show": True,   # =====> because in user_info we dont need to show
+            'time' : 3000,
             'error_type': 'existence_error'
         },
         status=404

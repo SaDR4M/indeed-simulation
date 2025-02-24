@@ -56,6 +56,7 @@ class ResumeRegister(APIView) :
                 data={
                     "succeeded" : False,
                     "show" : True,
+                    'time' : 3000,
                     "en_detail" : "Resume for this job seeker exist . please update it",
                     "fa_detail" : "شما رزومه فعالی دارید در صورت نیاز آن را تغییر دهید"
                 }

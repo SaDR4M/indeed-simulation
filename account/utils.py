@@ -242,7 +242,8 @@ def check_otp(mobile:str , otp:str) :
             'expired': True,
             'en_detail' : 'Get OTP code again.',
             'fa_detail' : 'مجدد درخواست کد دو عاملی داده شود', 
-            'show': True  
+            'show': True ,
+            'time' : 3000,
             }, status=HTTP_400_BAD_REQUEST)
 
     # wrong otp
@@ -253,6 +254,7 @@ def check_otp(mobile:str , otp:str) :
             'wrong_auth': True,
             'en_detail' : 'OTP is wrong',
             'fa_detail' : 'کد وارد شده صحیح نمی باشد', 
+            'time' : 3000,
             }, status=HTTP_400_BAD_REQUEST)
     return True
 
@@ -317,6 +319,7 @@ def validate_user_mobile(mobile) :
             'show': True,
             'en_detail': 'Mobile is not correct',
             'fa_detail': 'ساختار شماره تلفن همراه نادرست است',
+            'time' : 3000,
         }
         return Response(response_json, status=HTTP_400_BAD_REQUEST)
     return True
@@ -343,6 +346,7 @@ def update_user_password(user:object , old_password:str , new_password:str , con
                 data = {
                     "succeeded" : False,
                     "show" : True,
+                    'time' : 3000,                   
                     "en_detail": "password must match",
                     "fa_detail" : "پسوردهای وارد شده مطابقت ندارند",
                 },
@@ -370,6 +374,7 @@ def update_user_password(user:object , old_password:str , new_password:str , con
                 data = {
                     "succeeded" : True,
                     "show" : True,
+                    'time' : 3000,
                     "en_detail" : "password changed successfully",
                     "fa_detail" : "پسورد با موفقیت تغییر کرد"
                 },

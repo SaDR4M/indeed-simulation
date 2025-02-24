@@ -77,6 +77,7 @@ class JobOffer(APIView , FilterJobOpportunityMixin) :
                 data={
                     "succeeded" : False,
                     "show" : True,
+                    'time' : 3000,
                     "en_detail" : "there is no remaining for this package",
                     "fa_detail" : "به سقف استفاده از ثبت رزومه با پکیج فعلی رسیده اید"
                     } , 

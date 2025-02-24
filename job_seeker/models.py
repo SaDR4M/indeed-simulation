@@ -4,6 +4,8 @@ from django.contrib.auth import get_user_model
 from account.models import User
 from location.models import Cities , Provinces
 from core.mixins import GenderMixin
+from core.choices import ExperienceChoices , EducationChoices 
+from manager.models import TechnologyCategory
 # Create your models here.
 
 
@@ -64,21 +66,8 @@ class Answer(models.Model) :
 # resume of the job seeker
 class Resume(models.Model) :
     
-    class EducationChoices(models.TextChoices) :
-        UNDER_DIPLOMA = "under_diploma" 
-        BACHELOR = "bachelor"
-        DIPLOMA = "diploma"
-        MASTER =  "master"
-        PHD = "phd"
+
         
-        
-    class StackChoices(models.TextChoices) :
-        FRONT_END = "front_end"  
-        BACK_END = "back_end"
-        FULL_STACK = "full_stack"
-        WORDPRESS = "wordpress"
-        GRAPHIC_DESIGNER = "graphic_designer"
-        SEO = "seo"
         
         
         
@@ -87,9 +76,10 @@ class Resume(models.Model) :
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     skills = models.JSONField(default=dict , null=True)
-    experience = models.IntegerField()
+    experience = models.CharField(choices=ExperienceChoices)
     education = models.CharField(choices=EducationChoices)
-    stack = models.CharField(choices=StackChoices)
+    stack = models.ManyToManyField(TechnologyCategory , related_name="resume")
+    
     test = models.ManyToManyField(Test , related_name="resume")
     
     

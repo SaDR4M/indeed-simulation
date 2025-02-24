@@ -6,6 +6,8 @@ import datetime
 from account.models import User
 from location.models import Cities , Provinces
 from core.mixins import GenderMixin
+from core.choices import CooperationChoices , ExperienceChoices , WorkModeChoices
+from manager.models import TechnologyCategory
 # Create your models here.
 
 # extra information about the employer
@@ -34,17 +36,68 @@ class JobOpportunity(models.Model):
         MALE = "male"
         FEMALE = "female"
         UNISEX = "unisex"
-        
-        
-    employer = models.ForeignKey("employer.Employer" , on_delete=models.CASCADE , related_name="job_opportunities")
-    active = models.BooleanField(default=False)
-    title = models.CharField(max_length=100)
-    description = models.TextField(max_length=500)
-    status = models.CharField(choices=OfferStatus , default=OfferStatus.REGISTRED)
-    created_at = models.DateTimeField(auto_now_add=True)
-    province = models.ForeignKey(Provinces , related_name="job_states" , on_delete=models.CASCADE , help_text="province of the offer . default is Tehran")
-    city = models.ForeignKey(Cities , related_name="job_offers" , on_delete=models.CASCADE , default=301 , help_text="city of the offer . default is Tehran")
-    gender = models.CharField(choices=GenderChoices , default=GenderChoices.UNISEX)
+                
+    employer = models.ForeignKey(
+        "employer.Employer" ,
+        on_delete=models.CASCADE ,
+        related_name="job_opportunities"
+    )
+    active = models.BooleanField(
+        default=False
+    )
+    title = models.CharField(
+        max_length=100
+    )
+    description = models.TextField(
+        max_length=500
+    )
+    status = models.CharField(
+        choices=OfferStatus ,
+        default=OfferStatus.REGISTRED
+    )
+    updated_by_admin = models.ForeignKey(
+        "account.User" ,
+        on_delete=models.CASCADE ,
+        null=True , blank=True
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+    province = models.ForeignKey(Provinces , 
+        related_name="job_states" ,
+        on_delete=models.CASCADE , 
+        help_text="province of the offer . default is Tehran"
+    )
+    city = models.ForeignKey(Cities , 
+        related_name="job_offers" , 
+        on_delete=models.CASCADE , 
+        default=301 , 
+        help_text="city of the offer . default is Tehran"
+    )
+    stack = models.ManyToManyField(
+        TechnologyCategory ,
+        related_name="offers"
+    )
+    gender = models.CharField(
+        choices=GenderChoices ,
+        default=GenderChoices.UNISEX
+    )
+    experience = models.CharField(
+        choices=ExperienceChoices,
+        default=ExperienceChoices.JUNIOR
+    )
+    cooperation = models.CharField(
+        choices=CooperationChoices,
+        default=CooperationChoices.FULLTIME
+    )
+    work_mode = models.CharField(
+        choices=WorkModeChoices,
+        default=WorkModeChoices.ONSITE
+    )
+    
     # i changed the data type of this column manually in the DB
     expire_at = models.DateTimeField()
 

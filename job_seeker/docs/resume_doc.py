@@ -38,14 +38,3 @@ resume_register_patch_doc = swagger_auto_schema(
         },
         security=[{"Bearer" : []}]
     )
-resume_register_delete_doc = swagger_auto_schema(
-        operation_summary="delete resume for the job seeker",
-        operation_description="delete resume for the job seeker if job seeker exists",
-        responses={
-            200 : "resume deleted successfully",
-            400 : "invalid parameters",
-            403 : "does not have permission to do this action",
-            404 : "job seeker was not found"
-        },
-        security=[{"Bearer" : []}]
-    )

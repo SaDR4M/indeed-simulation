@@ -11,25 +11,25 @@ from employer.models import JobOpportunity
 from job_seeker.models import JobSeeker
 from job_seeker.serializers import JobSeekerSerializer , UpdateJobSeekerSerializer , JobSeekerDataSerialzier
 from job_seeker import utils
+from job_seeker.decorators import job_seeker_required
+from location.utils import get_city , get_province
 from job_seeker.docs import (
     job_seeker_data_patch_doc,
     job_seeker_get_get_doc,
     job_seeker_register_post_doc,
 )
-from location.utils import get_city , get_province
 # Create your views here.
 class JobSeekerData(APIView) : 
     """Get / Update job seeker data"""
     permission_classes = [IsAuthenticated]
     
     @job_seeker_get_get_doc
+    @job_seeker_required
     def get(self, request):
         """Job seeker data"""
         user = request.user
-        # finding the job seeker information
-        job_seeker = utils.job_seeker_exists(user)
-        if not job_seeker :
-            return Response(data={"detail" : "there is no job seeker assigned to this user"} , status=status.HTTP_404_NOT_FOUND)
+        # check if user is job seeker
+        job_seeker = request.job_seeker
         # get the job seeker information
         # FIXME fix the (AttributeError: 'User' object has no attribute 'has_perm')
         # if not user.has_perm('view_job_seeker' , job_seeker ):
@@ -39,12 +39,12 @@ class JobSeekerData(APIView) :
     
 
     @job_seeker_data_patch_doc
+    @job_seeker_required
     def patch(self , request ) :
         """Update job seeker data"""
         user = request.user
-        job_seeker = utils.job_seeker_exists(user)
-        if not job_seeker :
-            return Response(data={"detail" : "job seeker does not exists for this user" } , status=status.HTTP_404_NOT_FOUND)
+        # check if user is job seeker
+        job_seeker = request.job_seeker
         # FIXME fix the permission
         # if not user.has_perm('change_job_seeker' , job_seeker) :
         #     return Response(data={"detail" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)

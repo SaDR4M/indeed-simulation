@@ -13,6 +13,7 @@ from employer import utils
 from employer.serializers import InterviewScheduleSerializer
 from employer.models import InterviewSchedule  
 from employer.mixins import InterviewScheduleMixin, FilterInterviewScheduleMixin 
+from job_seeker.decorators import job_seeker_required
 from job_seeker.docs import (
     interview_schedule_get_doc,
     interview_schedule_patch_doc
@@ -23,11 +24,10 @@ from job_seeker.docs import (
 class JobSeekerInterviewSchedule(APIView , InterviewScheduleMixin , FilterInterviewScheduleMixin) : 
 
     @interview_schedule_get_doc
+    @job_seeker_required
     def get(self , request):
         user = request.user
-        job_seeker = utils.job_seeker_exists(user)
-        if not job_seeker :
-            return Response(data={"error" : "employer does not exists"} ,status=status.HTTP_404_NOT_FOUND )
+        job_seeker = request.job_seeker
         # get the schedule base on employer
         interviews = InterviewSchedule.objects.filter(apply__job_seeker = job_seeker ).exclude(status__in = ["rejected_by_employer" , "rejected_by_jobseeker"])
         

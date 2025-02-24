@@ -9,6 +9,7 @@ from employer.models import JobOpportunity
 from job_seeker.models import Application 
 from job_seeker.serializers import  ApplicationSerializer 
 from job_seeker import utils
+from job_seeker.decorators import job_seeker_required
 from job_seeker.docs import (
     applies_for_job_get_doc,
     apply_for_job_post_doc,
@@ -19,13 +20,11 @@ from job_seeker.docs import (
 class ApplyForJob(APIView):
 
     @applies_for_job_get_doc
+    @job_seeker_required
     def get(self, request):
         """Get data of specifc apply"""
         user = request.user 
-        job_seeker = utils.job_seeker_exists(user)
-        if not job_seeker :
-            return Response(data={"detail" : "user does not exist"} , status=status.HTTP_404_NOT_FOUND)
-
+        job_seeker = request.job_seeker
         applications = Application.objects.filter(job_seeker=job_seeker)
         if not applications.exists() :
             return Response(data={"detail" : "there is no job application that this user has done"} , status=status.HTTP_404_NOT_FOUND)
@@ -35,13 +34,12 @@ class ApplyForJob(APIView):
         return Response(data={"detail" : serializer.data}, status=status.HTTP_200_OK)
     
     @apply_for_job_post_doc
+    @job_seeker_required
     def post(self , request) :
         "Apply for a job offer"
         user = request.user
         # check that user is asign to job seeker
-        job_seeker = utils.job_seeker_exists(user)
-        if not job_seeker :
-            return Response(data={"error" : "there is no job seeker asign to this user"} , status=status.HTTP_404_NOT_FOUND)
+        job_seeker = request.job_seeker
         offer_id  = request.data.get('offer_id') 
         if not offer_id :
             return Response(data={"error" : "offer_id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
@@ -78,12 +76,11 @@ class ApplyForJob(APIView):
 
     # wrong code
     @apply_for_job_delete_doc
+    @job_seeker_required
     def delete(self , request):
         """Delete the apply"""
         user = request.user
-        job_seeker = utils.job_seeker_exists(user)
-        if not job_seeker :
-            return Response(data={"detail" : "user does not exist"} , status=status.HTTP_404_NOT_FOUND)
+        job_seeker = request.job_seeker
         try :
             applications = Application.objects.get(job_seeker=job_seeker)
         except Application.DoesNotExist :

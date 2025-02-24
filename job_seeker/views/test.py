@@ -7,18 +7,16 @@ from guardian.shortcuts import assign_perm , get_objects_for_user
 # local imports
 from job_seeker.models import JobSeeker, Resume , Test , Question , Answer
 from job_seeker.serializers import TestSerializer , QuestionSerializer , AnswerSerializer
-
-from employer import utils
+from job_seeker import utils
+from job_seeker.decorators import job_seeker_required
 # Create your views here.
         
 class ParticapteTest(APIView) :
     # list of test that user participated
+    @job_seeker_required
     def get(self , request) :
         user = request.user
-        job_seeker = utils.job_seeker_exists(user) 
-        if not job_seeker :
-            return Response(data={"error" : "job seeker does not exists"} , status=status.HTTP_404_NOT_FOUND)
-        
+        job_seeker = request.job_seeker
         try :
             resume = Resume.objects.prefetch_related("test").get(job_seeker=job_seeker)
         except :
@@ -28,11 +26,10 @@ class ParticapteTest(APIView) :
         serializer = TestSerializer(tests , many=True)
         return Response(data={"data" : serializer.data} , status=status.HTTP_200_OK)
         
+    @job_seeker_required    
     def post(self , request) :
         user = request.user
-        job_seeker = utils.job_seeker_exists(user) 
-        if not job_seeker :
-            return Response(data={"error" : "job seeker does not exists"} , status=status.HTTP_404_NOT_FOUND)
+        job_seeker = request.job_seeker
         
         test_id = request.data.get("test_id")
         if not test_id:
@@ -61,13 +58,12 @@ class ParticapteTest(APIView) :
         
 class Questions(APIView) : 
     """get all the test questions"""
+    
+    @job_seeker_required
     def get(self , request) :
         
         user = request.user
-        job_seeker =  utils.job_seeker_exists(user)
-        if not job_seeker:
-            return Response(data={"error" : "job seeker does not exists"} , status=status.HTTP_404_NOT_FOUND)
-        
+                
         test_id = request.data.get('test_id')
         if not test_id :
             return Response(data={"error" : "test_id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
@@ -87,12 +83,10 @@ class Questions(APIView) :
         
 class AnswerQuestion(APIView) :
     
+    @job_seeker_required
     def get(self , request) :
         """get the answers for the question for the *user* """
         user = request.user
-        job_seeker =  utils.job_seeker_exists(user)
-        if not job_seeker:
-            return Response(data={"error" : "job seeker does not exists"} , status=status.HTTP_400_BAD_REQUEST)
         
         question_id = request.data.get('question_id')
         if not question_id :

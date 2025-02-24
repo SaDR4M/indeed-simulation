@@ -8,8 +8,8 @@ from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 
 # local imports
-from job_seeker.serializers import  ChangeJobSeekerInterviewScheduleSerializer 
-from employer import utils
+
+from job_seeker.utils import change_interview_schedule
 from employer.serializers import InterviewScheduleSerializer
 from employer.models import InterviewSchedule  
 from employer.mixins import InterviewScheduleMixin, FilterInterviewScheduleMixin 
@@ -23,9 +23,11 @@ from job_seeker.docs import (
 
 class JobSeekerInterviewSchedule(APIView , InterviewScheduleMixin , FilterInterviewScheduleMixin) : 
 
+
     @interview_schedule_get_doc
     @job_seeker_required
     def get(self , request):
+        """Get list of job seeker's interviews schedule"""
         user = request.user
         job_seeker = request.job_seeker
         # get the schedule base on employer
@@ -42,39 +44,26 @@ class JobSeekerInterviewSchedule(APIView , InterviewScheduleMixin , FilterInterv
         serializer = InterviewScheduleSerializer(filtered_data , many=True)
         return Response(data={"data" : serializer.data} , status=status.HTTP_200_OK)
     
+    
     @interview_schedule_patch_doc
     def patch(self , request) :
+        """Update interview schedule"""
         user = request.user
 
         job_seeker_time = request.data.get('job_seeker_time')
         apply_id = request.data.get("apply_id")
-        
+        # check user has permission for this job application
         apply = self.check_apply_and_permissions(apply_id , user , kind="job_seeker")
         if isinstance(apply , Response) :
             return apply
-        
+        # check if there is interview schedule or not
         interview = self.check_interview(apply)
         if isinstance(interview , Response) :
             return interview
-        
+        # check conflict with job seeker time or employer time
         conflict = self.check_conflict(interview.pk , job_seeker_time , apply , "job_seeker")
         if isinstance(conflict , Response) :
             return conflict
-
-        
-        
-        serializer = ChangeJobSeekerInterviewScheduleSerializer(interview ,data=request.data , partial=True)
-        if serializer.is_valid() :  
-            job_seeker_time = serializer.validated_data['job_seeker_time']
-            employer_time = interview.employer_time
-            if employer_time :
-                if employer_time == job_seeker_time :
-                    serializer.validated_data['status'] = 'approved'
-                    serializer.validated_data['interview_time'] = employer_time
-                if job_seeker_time != employer_time :
-                    print("Test3")
-                    serializer.validated_data['status'] = 'rejected_by_jobseeker'
-                    
-            serializer.save()
-            return Response(data={"success" : True ,"data" : serializer.data ,"interview_time" :  interview.interview_time } , status=status.HTTP_200_OK)
-        return Response(data={"errors" : serializer.errors} , status=status.HTTP_400_BAD_REQUEST)
+        # change the interview schedule
+        response = change_interview_schedule(request , interview)
+        return response

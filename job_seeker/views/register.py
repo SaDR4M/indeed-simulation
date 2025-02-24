@@ -9,10 +9,9 @@ from rest_framework.permissions import IsAuthenticated
 # local imports
 from employer.models import JobOpportunity
 from job_seeker.models import JobSeeker
-from job_seeker.serializers import JobSeekerSerializer , UpdateJobSeekerSerializer , JobSeekerDataSerialzier
-from job_seeker import utils
+from job_seeker.serializers import  UpdateJobSeekerSerializer , JobSeekerDataSerialzier
+from job_seeker.utils import register_job_seeker
 from job_seeker.decorators import job_seeker_required
-from location.utils import get_city , get_province
 from job_seeker.docs import (
     job_seeker_data_patch_doc,
     job_seeker_get_get_doc,
@@ -27,7 +26,6 @@ class JobSeekerData(APIView) :
     @job_seeker_required
     def get(self, request):
         """Job seeker data"""
-        user = request.user
         # check if user is job seeker
         job_seeker = request.job_seeker
         # get the job seeker information
@@ -69,28 +67,6 @@ class JobSeekerRegister(APIView) :
         if JobSeeker.objects.filter(user=user).exists():
             return Response(data={"detail" : "Job seeker exists for this user"} , status=status.HTTP_400_BAD_REQUEST)
         # register the job seeker
-        serializer = JobSeekerSerializer(data=request.data)
-        if serializer.is_valid():
-            data = serializer.validated_data
-            data['user'] = user
-            # adding the city and country
-            province_id = request.data.get('province')
-            province = get_province(province_id=province_id)
-            if isinstance(province , Response) :
-                return province
-            
-            city_id = request.data.get('city')
-            city = get_city(province_id=province_id , city_id=city_id)
-            if isinstance(city , Response) :
-                return city
-            
-            job_seeker = serializer.save(user=user , city=city , province=province)
-            # assign base permission
-            utils.assign_base_permissions(user, job_seeker, "jobseeker")
-            # change user role
-            user.role = 2
-            user.save()
-            return Response(data={"detail" : "Job Seeker registered successfully"}, status=status.HTTP_201_CREATED)
-        return Response(data={"errors" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-
+        response = register_job_seeker(request)
+        return response
 

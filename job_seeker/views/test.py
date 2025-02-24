@@ -15,7 +15,7 @@ class ParticapteTest(APIView) :
     # list of test that user participated
     @job_seeker_required
     def get(self , request) :
-        user = request.user
+        
         job_seeker = request.job_seeker
         try :
             resume = Resume.objects.prefetch_related("test").get(job_seeker=job_seeker)
@@ -28,7 +28,7 @@ class ParticapteTest(APIView) :
         
     @job_seeker_required    
     def post(self , request) :
-        user = request.user
+        
         job_seeker = request.job_seeker
         
         test_id = request.data.get("test_id")
@@ -61,8 +61,6 @@ class Questions(APIView) :
     
     @job_seeker_required
     def get(self , request) :
-        
-        user = request.user
                 
         test_id = request.data.get('test_id')
         if not test_id :

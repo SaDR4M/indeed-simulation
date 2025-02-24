@@ -4,13 +4,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK , HTTP_400_BAD_REQUEST , HTTP_404_NOT_FOUND
 # local imports
-from employer.serializers import (
-                          ChangeEmployerInterviewScheduleSerializer ,
-                          InterviewScheduleSerializer
-                          )
+from employer.serializers import (InterviewScheduleSerializer)
                           
 from employer.models import InterviewSchedule
-from employer.utils import employer_exists
+from employer.utils import employer_exists , change_interview_schedule
 from employer.mixins import InterviewScheduleMixin , FilterInterviewScheduleMixin
 from employer.docs import (
     interview_schedule_get_doc,
@@ -44,33 +41,20 @@ class EmployerInterviewSchedule(APIView , InterviewScheduleMixin , FilterIntervi
         
         apply_id = request.data.get("apply_id")
         employer_time = request.data.get("employer_time")
-        
+        # check employer has permission for this apply or not
         apply = self.check_apply_and_permissions(apply_id ,user , "employer" )
         if isinstance(apply , Response) :
             return apply
-        
+        # get interview data    
         interview = self.check_interview(apply)
         if isinstance(interview , Response) :
             return interview
-        
+        # check conflict times between job seeker time or its own interviews time
         conflict = self.check_conflict(interview.pk , employer_time , apply , "employer")
         if isinstance(conflict , Response) :
             return conflict
 
-        
-        serializer = ChangeEmployerInterviewScheduleSerializer(interview ,data=request.data , partial=True)
-        if serializer.is_valid() :  
-            job_seeker_time = interview.job_seeker_time
-            employer_time = serializer.validated_data['employer_time']
-            if job_seeker_time :
-                if job_seeker_time == employer_time :
-                    serializer.validated_data['status'] = 'approved'
-                    serializer.validated_data['interview_time'] = job_seeker_time
-                if job_seeker_time != employer_time :
-                    # interview.job_seeker_time = None
-                    serializer.validated_data['status'] = 'rejected_by_employer'
-            serializer.save()
-                
-            return Response(data={"success" : True ,"data" : serializer.data ,"interview_time" :  interview.interview_time } , status=HTTP_200_OK)
-        return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
+        # update the interview schedule
+        response = change_interview_schedule()
+        return response
         

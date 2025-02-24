@@ -137,6 +137,7 @@ update_credential_document = swagger_auto_schema(
                 "application/json": {
                     "succeeded" : True,
                     "show" : True,
+                    "time" : 3000,
                     "en_detail" : "password changed successfully",
                     "fa_detail" : "پسورد با موفقیت تغییر کرد"
                 }

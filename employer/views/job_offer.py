@@ -65,6 +65,7 @@ class JobOffer(APIView , FilterJobOpportunityMixin) :
                 data = {
                     "succeeded" : False,
                     "show" : True,
+                    "time" : 3000,
                     "en_detail" : "there is no purchase package for this user" , 
                     "fa_detail" : "پکیج فعالی برای شما یافت نشد"
                 } ,

@@ -333,6 +333,7 @@ def update_user_password(user:object , old_password:str , new_password:str , con
             data = {
                 "succeeded" : False,
                 "show" : True,
+                "time" : 3000,
                 "en_detail" : "Invalid password",
                 "fa_detail" : "پسورد وارد شده نامعتبر است"
             },
@@ -357,6 +358,7 @@ def update_user_password(user:object , old_password:str , new_password:str , con
                     data = {
                     "succeeded" : False,
                     "show" : True,
+                    "time" : 3000,
                     "en_detail" : "current password cannot be set as new password",
                     "fa_detail" : "پسورد فعلی به عنوان پسورد جدید مورد قبول نمی باشد"
                 }

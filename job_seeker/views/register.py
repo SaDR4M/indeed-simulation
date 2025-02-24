@@ -52,13 +52,6 @@ class JobSeekerData(APIView) :
         serializer = UpdateJobSeekerSerializer(job_seeker , data=request.data , partial=True)
         # TODO fix the location update bug
         if serializer.is_valid():
-            # country_data = self.country_and_city_id(request)
-            # if isinstance(country_data , Response):
-            #     return country_data
-            # city = country_data['city']
-            # country = country_data['country']
-            # state = country_data['state']
-            # serializer.save(user=user , city=city , country=country , state=state)
             serializer.save(user=user)
             return Response(data={"detail" : "job seeker updated successfully"}, status=status.HTTP_200_OK)
         return Response(data={"errors" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)

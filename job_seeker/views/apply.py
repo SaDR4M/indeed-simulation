@@ -8,7 +8,7 @@ from guardian.shortcuts import assign_perm
 from employer.models import JobOpportunity
 from job_seeker.models import Application 
 from job_seeker.serializers import  ApplicationSerializer 
-from employer import utils
+from job_seeker import utils
 from job_seeker.docs import (
     applies_for_job_get_doc,
     apply_for_job_post_doc,
@@ -20,6 +20,7 @@ class ApplyForJob(APIView):
 
     @applies_for_job_get_doc
     def get(self, request):
+        """Get data of specifc apply"""
         user = request.user 
         job_seeker = utils.job_seeker_exists(user)
         if not job_seeker :
@@ -35,6 +36,7 @@ class ApplyForJob(APIView):
     
     @apply_for_job_post_doc
     def post(self , request) :
+        "Apply for a job offer"
         user = request.user
         # check that user is asign to job seeker
         job_seeker = utils.job_seeker_exists(user)
@@ -77,6 +79,7 @@ class ApplyForJob(APIView):
     # wrong code
     @apply_for_job_delete_doc
     def delete(self , request):
+        """Delete the apply"""
         user = request.user
         job_seeker = utils.job_seeker_exists(user)
         if not job_seeker :
@@ -95,6 +98,7 @@ class AppliesForJob(APIView):
         
     @applies_for_job_get_doc
     def get(self , request) :
+        """list of applies for a specific job offer"""
         job_id = request.data.get('id')
         try :
             job_opportunity = JobOpportunity.objects.get(pk=job_id)

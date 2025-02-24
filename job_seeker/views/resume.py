@@ -35,10 +35,11 @@ class ResumeRegister(APIView) :
         except Resume.DoesNotExist :
             return Response(data={"detail" : "there is no resume for this job seeker"} , status=status.HTTP_404_NOT_FOUND)
         # have permission to view the resume
-        if not user.has_perm('view_resume' , resume) :
-            return Response(data={"detail" : "user does not have permission to view this resume"} , status=status.HTTP_403_FORBIDDEN)
+        # if not user.has_perm('view_resume' , resume) :
+        #     return Response(data={"detail" : "user does not have permission to view this resume"} , status=status.HTTP_403_FORBIDDEN)
         serializer = GetResumeSerializer(resume)
         return Response(data={"detail" : serializer.data}, status=status.HTTP_200_OK)
+    
     
     @resume_register_post_doc
     def post(self , request) :

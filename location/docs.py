@@ -1,7 +1,7 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 
-all_provinces = swagger_auto_schema(
+all_provinces_get_doc = swagger_auto_schema(
     operation_description="list of all provinces",
     operation_summary="list of all provinces",
     responses= {
@@ -27,7 +27,7 @@ all_provinces = swagger_auto_schema(
         )
     }
 )
-all_cities = swagger_auto_schema(
+all_cities_get_doc = swagger_auto_schema(
     operation_description="list of all cities",
     operation_summary="list of all cities",
     responses={
@@ -53,7 +53,7 @@ all_cities = swagger_auto_schema(
     )
         }
 )
-province_cities = swagger_auto_schema(
+province_cities_get_doc = swagger_auto_schema(
     operation_description="list of a province cities",
     operation_summary="list of a province cities",
     manual_parameters=[

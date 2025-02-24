@@ -19,7 +19,7 @@ from . import utils
 
 from job_seeker.mixins import FilterTestMixin , FilterQuestionMixin , JobSeekerFilterMixin
 from job_seeker.models import Test , Question 
-from job_seeker.serializers import TestSerializer , QuestionSerializer , GetJobSeekerSerialzier
+from job_seeker.serializers import TestSerializer , QuestionSerializer , JobSeekerDataSerialzier
 
 from employer.models import JobOpportunity
 from employer.serializers import JobOpportunitySerializer
@@ -445,7 +445,7 @@ class AllJobSeekers(APIView , JobSeekerFilterMixin) :
         paginator = LimitOffsetPagination()
         paginator.paginate_queryset(filtered_jobseekers , request)
         
-        serializer = GetJobSeekerSerialzier(filtered_jobseekers , many=True)
+        serializer = JobSeekerDataSerialzier(filtered_jobseekers , many=True)
         return Response(data={"data" : serializer.data} , status=status.HTTP_200_OK)
 
 

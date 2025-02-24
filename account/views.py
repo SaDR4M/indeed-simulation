@@ -48,7 +48,7 @@ class UserOTPApiView(APIView):
         # validate user mobile
         mobile = request.data.get("mobile")
         validated_mobile = validate_user_mobile(mobile)
-        if isinstance(validate_user_mobile , Response) :
+        if isinstance(validated_mobile , Response) :
             return validated_mobile
     
         with_call = False

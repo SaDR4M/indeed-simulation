@@ -11,7 +11,8 @@ resume_register_get_doc = swagger_auto_schema(
             200 : ResumeSerializer,
             400 : "invalid parameters",
             404 : "job seeker was not found"
-        }
+        },
+        security=[{"Bearer" : []}]
     )
 resume_register_post_doc = swagger_auto_schema(
         operation_summary="register resume for the job seeker",
@@ -22,7 +23,8 @@ resume_register_post_doc = swagger_auto_schema(
             400 : "invalid parameters",
             403 : "does not have permission to do this action",
             404 : "job seeker was not found"
-        }
+        },
+        security=[{"Bearer" : []}]
     )
 resume_register_patch_doc = swagger_auto_schema(
         operation_summary="update resume for the job seeker",
@@ -33,7 +35,8 @@ resume_register_patch_doc = swagger_auto_schema(
             400 : "invalid parameters",
             403 : "does not have permission to do this action",
             404 : "job seeker was not found"
-        }
+        },
+        security=[{"Bearer" : []}]
     )
 resume_register_delete_doc = swagger_auto_schema(
         operation_summary="delete resume for the job seeker",
@@ -43,5 +46,6 @@ resume_register_delete_doc = swagger_auto_schema(
             400 : "invalid parameters",
             403 : "does not have permission to do this action",
             404 : "job seeker was not found"
-        }
+        },
+        security=[{"Bearer" : []}]
     )

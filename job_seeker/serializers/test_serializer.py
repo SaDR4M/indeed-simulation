@@ -1,49 +1,11 @@
 # third party imports
 from rest_framework import serializers
-from rest_framework.parsers import MultiPartParser, FormParser
 # local imports
-from .models import JobSeeker , Resume , Application , Test , Question , Answer
-from employer.models import InterviewSchedule
+from job_seeker.models import Test , Question , Answer
 
 
 
-class JobSeekerSerializer(serializers.ModelSerializer):
-    class Meta :
-        model = JobSeeker
-        exclude = ['user' , 'city' , 'province']
-        # fields = '__all__'
-        
-class GetJobSeekerSerialzier(serializers.ModelSerializer) :
-    class Meta:
-        model = JobSeeker
-        fields = '__all__'
 
-class ResumeSerializer(serializers.ModelSerializer):
-    file = serializers.FileField(required=False)
-    class Meta :
-        model = Resume
-        exclude = ['job_seeker' , 'test']
-        # fields = "__all__"
-class GetResumeSerializer(serializers.ModelSerializer) :
-    class Meta :
-        model = Resume
-        fields = '__all__'
-
-
-class ApplicationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Application
-        exclude = ['job_seeker' , 'job_opportunity' , 'status']
-
-# ChangeJobSeekerInterviewScheduleSerializer
-class ChangeJobSeekerInterviewScheduleSerializer(serializers.ModelSerializer) :
-    job_seeker_time = serializers.DateTimeField(required=False)
-    class Meta :
-        model = InterviewSchedule
-        exclude = ['status' , 'employer_time']
-        
-        
-        
 class TestSerializer(serializers.ModelSerializer) :
     
     class Meta :
@@ -73,6 +35,7 @@ class QuestionSerializer(serializers.ModelSerializer) :
             if field in validated_data :
                 raise serializers.ValidationError({field : "this field can not be updated"})
         return super().update(instance , validated_data)
+    
     
 class AnswerSerializer(serializers.ModelSerializer) :
     

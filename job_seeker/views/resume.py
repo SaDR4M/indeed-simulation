@@ -8,7 +8,7 @@ from rest_framework.parsers import MultiPartParser
 # local imports
 from job_seeker.models import Resume 
 from job_seeker.serializers import  ResumeSerializer , GetResumeSerializer 
-from employer import utils
+from job_seeker import utils
 from job_seeker.docs import (
     resume_register_get_doc,
     resume_register_post_doc,
@@ -22,6 +22,7 @@ class ResumeRegister(APIView) :
     parser_classes = [MultiPartParser] 
     @resume_register_get_doc
     def get(self , request):
+        """Job seeker resume data"""
         user = request.user
         # get the user
         job_seeker = utils.job_seeker_exists(user)
@@ -41,6 +42,7 @@ class ResumeRegister(APIView) :
     
     @resume_register_post_doc
     def post(self , request) :
+        """Create resume for the job seeker"""
         user = request.user
         print(request.FILES , request.data)
         # return if job seeker does not exists
@@ -49,7 +51,14 @@ class ResumeRegister(APIView) :
             return Response(data={"detail" : "there is no job seeker asgin to this user"} , status=status.HTTP_404_NOT_FOUND)
         # return if resume exists
         if Resume.objects.filter(job_seeker=job_seeker).exists() :
-            return Response(data={"detail" : "Resume for this job seeker exist . please update it"})
+            return Response(
+                data={
+                    "succeeded" : False,
+                    "show" : True,
+                    "en_detail" : "Resume for this job seeker exist . please update it",
+                    "fa_detail" : "شما رزومه فعالی دارید در صورت نیاز آن را تغییر دهید"
+                }
+            )
         # create resume
         serializer = ResumeSerializer(data=request.data)
         if serializer.is_valid():
@@ -65,6 +74,7 @@ class ResumeRegister(APIView) :
 
     @resume_register_patch_doc
     def patch(self , request):
+        """Update job seeker resume"""
         user = request.user
         print(request.data)
         job_seeker = utils.job_seeker_exists(user)
@@ -82,17 +92,18 @@ class ResumeRegister(APIView) :
             return Response(data={"detail" : "resume updated successfully"} , status=status.HTTP_200_OK)
         return Response(data={"errors" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-    @resume_register_delete_doc
-    def delete(self , request):
-        user = request.user
-        job_seeker = utils.job_seeker_exists(user)
-        if not job_seeker :
-            return Response(data={"detail" : "job seeker does not exist"} , status=status.HTTP_404_NOT_FOUND)
-        try :
-            resume = Resume.objects.get(job_seeker=job_seeker)
-        except Resume.DoesNotExist :
-            return Response(data={"detail" : "resume does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        if not user.has_perm('delete_resume' , resume) :
-            return Response(data={"detail" : "user does not have permission to delete resume"} , status=status.HTTP_403_FORBIDDEN)
-        resume.delete()
-        return Response(data={"detail" : "resume deleted successfully"} , status=status.HTTP_201_CREATED)
+    # @resume_register_delete_doc
+    # def delete(self , request):
+    #     """Delete user's resume"""
+    #     user = request.user
+    #     job_seeker = utils.job_seeker_exists(user)
+    #     if not job_seeker :
+    #         return Response(data={"detail" : "job seeker does not exist"} , status=status.HTTP_404_NOT_FOUND)
+    #     try :
+    #         resume = Resume.objects.get(job_seeker=job_seeker)
+    #     except Resume.DoesNotExist :
+    #         return Response(data={"detail" : "resume does not exist"}, status=status.HTTP_404_NOT_FOUND)
+    #     if not user.has_perm('delete_resume' , resume) :
+    #         return Response(data={"detail" : "user does not have permission to delete resume"} , status=status.HTTP_403_FORBIDDEN)
+    #     resume.delete()
+    #     return Response(data={"detail" : "resume deleted successfully"} , status=status.HTTP_200_OK)

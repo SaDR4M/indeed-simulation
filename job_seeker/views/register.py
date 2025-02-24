@@ -5,21 +5,26 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+from rest_framework.permissions import IsAuthenticated
 # local imports
 from employer.models import JobOpportunity
 from job_seeker.models import JobSeeker
-from job_seeker.serializers import JobSeekerSerializer
+from job_seeker.serializers import JobSeekerSerializer , UpdateJobSeekerSerializer , JobSeekerDataSerialzier
 from job_seeker import utils
 from job_seeker.docs import (
-    job_seeker_register_get_doc,
+    job_seeker_data_patch_doc,
+    job_seeker_get_get_doc,
     job_seeker_register_post_doc,
-    job_seeker_register_patch_doc,
 )
 from location.utils import get_city , get_province
 # Create your views here.
-class JobSeekerRegister(APIView) :
-    @job_seeker_register_get_doc
+class JobSeekerData(APIView) : 
+    """Get / Update job seeker data"""
+    permission_classes = [IsAuthenticated]
+    
+    @job_seeker_get_get_doc
     def get(self, request):
+        """Job seeker data"""
         user = request.user
         # finding the job seeker information
         job_seeker = utils.job_seeker_exists(user)
@@ -29,12 +34,43 @@ class JobSeekerRegister(APIView) :
         # FIXME fix the (AttributeError: 'User' object has no attribute 'has_perm')
         # if not user.has_perm('view_job_seeker' , job_seeker ):
         #     return Response(data={"detail" : "user does not have permission to view this"} , status=status.HTTP_403_FORBIDDEN)
-        serializer = JobSeekerSerializer(job_seeker)
+        serializer = JobSeekerDataSerialzier(job_seeker)
         return Response(data={"detail" : serializer.data}, status=status.HTTP_200_OK)
     
+
+    @job_seeker_data_patch_doc
+    def patch(self , request ) :
+        """Update job seeker data"""
+        user = request.user
+        job_seeker = utils.job_seeker_exists(user)
+        if not job_seeker :
+            return Response(data={"detail" : "job seeker does not exists for this user" } , status=status.HTTP_404_NOT_FOUND)
+        # FIXME fix the permission
+        # if not user.has_perm('change_job_seeker' , job_seeker) :
+        #     return Response(data={"detail" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
+
+        serializer = UpdateJobSeekerSerializer(job_seeker , data=request.data , partial=True)
+        # TODO fix the location update bug
+        if serializer.is_valid():
+            # country_data = self.country_and_city_id(request)
+            # if isinstance(country_data , Response):
+            #     return country_data
+            # city = country_data['city']
+            # country = country_data['country']
+            # state = country_data['state']
+            # serializer.save(user=user , city=city , country=country , state=state)
+            serializer.save(user=user)
+            return Response(data={"detail" : "job seeker updated successfully"}, status=status.HTTP_200_OK)
+        return Response(data={"errors" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    
+class JobSeekerRegister(APIView) :
+    """Register the job seeker"""
     
     @job_seeker_register_post_doc
     def post(self , request):
+        """Register job seeker"""
         user = request.user
         # return if job seeker exists
         if JobSeeker.objects.filter(user=user).exists():
@@ -65,26 +101,3 @@ class JobSeekerRegister(APIView) :
         return Response(data={"errors" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
-    @job_seeker_register_patch_doc
-    def patch(self , request ) :
-        user = request.user
-        job_seeker = utils.job_seeker_exists(user)
-        if not job_seeker :
-            return Response(data={"detail" : "job seeker does not exists for this user" } , status=status.HTTP_404_NOT_FOUND)
-
-        if not user.has_perm('change_job_seeker' , job_seeker) :
-            return Response(data={"detail" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
-
-        serializer = JobSeekerSerializer(job_seeker , data=request.data , partial=True)
-        # TODO fix the location update bug
-        if serializer.is_valid():
-            # country_data = self.country_and_city_id(request)
-            # if isinstance(country_data , Response):
-            #     return country_data
-            # city = country_data['city']
-            # country = country_data['country']
-            # state = country_data['state']
-            # serializer.save(user=user , city=city , country=country , state=state)
-            serializer.save(user=user)
-            return Response(data={"detail" : "job seeker updated successfully"}, status=status.HTTP_200_OK)
-        return Response(data={"errors" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)

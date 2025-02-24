@@ -249,10 +249,10 @@ def check_otp(mobile:str , otp:str) :
     if not check_password(otp , hashed_otp):
         return Response({
             "succeeded": False,
+            'show': True,
             'wrong_auth': True,
-            'en_detail' : 'Get OTP code again.',
-            'fa_detail' : 'مجدد درخواست کد دو عاملی داده شود', 
-            'show': True 
+            'en_detail' : 'OTP is wrong',
+            'fa_detail' : 'کد وارد شده صحیح نمی باشد', 
             }, status=HTTP_400_BAD_REQUEST)
     return True
 
@@ -310,7 +310,7 @@ def validate_user_password(password:str) :
 
 
 def validate_user_mobile(mobile) :
-    mobile_validate = re.search("^(0|0098|98|\+98)9(0[1-5]|[1 3]\d|2[0-2]|9[1 8 9])\d{7}$", mobile)
+    mobile_validate = re.search("^(0|0098|98|\+98)9(0[1-5]|[1 3]\d|2[0-2]|9[1 8 9])\d{7}$", str(mobile))
     if not mobile_validate:
         response_json = {
             'succeeded': False,

@@ -6,14 +6,21 @@ from rest_framework.status import HTTP_200_OK , HTTP_201_CREATED , HTTP_400_BAD_
 from datetime import datetime
 from guardian.shortcuts import assign_perm
 # local imports
-from employer.models import Employer
-from employer.serializers import EmployerSerializer , JobOpportunitySerializer , ChangeEmployerInterviewScheduleSerializer
+from employer.models import Employer , JobOpportunity , ViewedResume , ViewedAppliedResume , InterviewSchedule
+from employer.serializers import (
+    EmployerSerializer ,
+    JobOpportunitySerializer ,
+    ChangeEmployerInterviewScheduleSerializer ,
+    ViewedResumeSerializer ,
+    AppliedViewedResumeSerializer,
+    ChangeApllyStatusSerializer
+)
 from employer import tasks
 from account.models import Message
 from package.models import PurchasedPackage
 from order.models import Order
 from location.utils import get_province , get_city
-
+from job_seeker.models import JobSeeker , Application 
 # can not make job opportunity if they do not have any packages
 def can_create_offer(employer , priority) :
     purchased = PurchasedPackage.objects.filter(employer=employer , package__type="offer"  , package__priority=priority,  active=True).order_by('bought_at')
@@ -176,3 +183,154 @@ def change_interview_schedule(request:object , interview:object) -> Response :
                 
         return Response(data={"success" : True ,"data" : serializer.data ,"interview_time" :  interview.interview_time } , status=HTTP_200_OK)
     return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
+
+
+def view_resume(request:object , employer:object , offer_id:int) -> Response:
+    """
+    View resume by employer if:
+    1) employer has package to see resume
+    2) resume was not seen before
+    """
+    user = request.user
+    serializer = ViewedResumeSerializer(data=request.data)
+    if serializer.is_valid() :
+        data = serializer.validated_data
+        resume = data['resume']
+
+        # check if user have purchased packages or not
+        purchased = PurchasedPackage.objects.filter(employer=employer , active=True , package__type="resume").order_by('bought_at')
+        if not purchased.exists() :
+            return Response(data={"detail" : "employer does not have any purchased packages"})
+        # check that the employer have this job offer or not
+        try :
+            offer = JobOpportunity.objects.get(employer=employer, pk=offer_id)
+        except JobOpportunity.DoesNotExist :
+            return Response(data={"detail" : "offer does not exists"} , status=HTTP_404_NOT_FOUND)
+        # avoid duplicate for the resume
+        if ViewedResume.objects.filter(employer=employer ,  resume=resume).exists() :
+            return Response(data={"detail" : "Resume was seen before"})
+        # check that the resume is in the job application or not
+        try :
+            apply = Application.objects.get(job_opportunity=offer , job_seeker=resume.job_seeker)
+        except Application.DoesNotExist :
+            return Response(data={"detail" : "apply does not exists"} , status=HTTP_404_NOT_FOUND)
+
+        # change the status of the apply resume to 'seen'
+        apply.status = "seen"
+        apply.save()
+        # save it to the viewed resumes
+        serializer.save(employer=employer)
+        message = Message.objects.create(type="resume" , kind="email"  , email=user.email)
+        tasks.send_resume_status.apply_async(args=[apply.pk , message.pk])
+        # minus from the remaining
+        purchased_instance = purchased.first()
+        new_remaining = purchased_instance.remaining - 1
+        purchased_instance.remaining = new_remaining
+        purchased_instance.save()
+
+        return Response(data={"success" : True} , status=HTTP_200_OK)
+    return Response(data={"success" : False , "errors" : serializer.errors } , status=HTTP_400_BAD_REQUEST)
+    
+    
+def view_applied_resume(request:object , employer:object , apply_id:int) -> Response:
+    """View applied resume (change the satus of applied resume to seen)"""
+    user = request.user
+    serializer = AppliedViewedResumeSerializer(data=request.data)
+    if serializer.is_valid() : 
+        try :
+            # not important to use prefetch related in this situation cause it is just one data 
+            apply = Application.objects.prefetch_related('job_seeker').get(pk=apply_id , job_opportunity__employer = employer)
+            applied_resume = apply.job_seeker.resume
+            job_offer = apply.job_opportunity
+            print(applied_resume)
+        except Application.DoesNotExist :
+            return Response(data={"error" : "job apply does not exists"} , status=HTTP_404_NOT_FOUND)
+
+        purchased = PurchasedPackage.objects.filter(employer=employer , active=True , package__type="resume").order_by('bought_at')
+        if not purchased.exists() :
+            return Response(
+                data={
+                    "succeeded" : False,
+                    "show" : True,
+                    "time" : 3000,
+                    "en_detail" : "employer does not have any purchased packages",
+                    "fa_detail" : "کاربر پکیج فعالی ندارد"
+                }
+            )
+                
+                
+        # check that employer viewed this resume for the apply before or not
+        viewed_applied_resume = ViewedAppliedResume.objects.filter(job_offer = job_offer, resume = applied_resume)
+        if viewed_applied_resume.exists() :
+            return Response(data={"error" : "employer viewed this resume before"} , status=HTTP_400_BAD_REQUEST)
+
+            
+        serializer.validated_data['job_offer'] = job_offer
+        serializer.validated_data['resume'] = applied_resume
+        viewed_applied_resume = serializer.save()
+        message = Message.objects.create(type="resume" , kind="email"  , email=user.email)
+        tasks.send_resume_status.apply_async(args=[apply.pk , message.pk])
+        # minus from the remaining
+        purchased_instance = purchased.first()
+        new_remaining = purchased_instance.remaining - 1
+        purchased_instance.remaining = new_remaining
+        purchased_instance.save()
+        assign_perm("view_viewedappliedresume" , user , viewed_applied_resume)
+        return Response(
+            data={
+                "show" : False,
+                "succeeded" : True ,
+                "en_detail" : "resume added to viewed resume that are applied to employer",
+                "fa_detail" : "رزومه دیده شد"
+            } ,
+            status=HTTP_200_OK
+        )
+        
+    return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)        
+
+
+def change_applied_resume_status(request:object ,status:str , apply:object , employer:object) -> Response :
+    """
+    change the status of resume 
+    1) reject 
+    2) approved
+    3) interview
+    """
+    
+    user = request.user
+    serializer = ChangeApllyStatusSerializer(apply , data=request.data , partial=True)
+    if serializer.is_valid() :
+        status = serializer.validated_data['status']
+        serializer.save()
+        # create schedule for the apply if the status is interview
+        if status == "interview" :
+            # check that if there is schedule or not 
+            schedule = InterviewSchedule.objects.filter(apply=apply) 
+            if schedule.exists() :
+                return Response(
+                    data={
+                        "error" : "there is schedule for this apply" ,
+                        "fa_error" : "برنامه برای مصاحبه وجود دارد"
+                    } , 
+                    status=HTTP_400_BAD_REQUEST
+                )
+            schedule = InterviewSchedule.objects.create(apply=apply) 
+            # give permission to the schedule to the user (employer) and the apply job seeker
+            assign_perm("view_interviewschedule" , user , schedule)
+            assign_perm("change_interviewschedule" , user , schedule)
+            assign_perm("view_interviewschedule" , apply.job_seeker.user , schedule)
+            assign_perm("change_interviewschedule" ,  apply.job_seeker.user  , schedule)
+            # send the status to the job seeker
+        message = Message.objects.create(type="resume" , kind="email"  , email=user.email)
+        tasks.send_resume_status.apply_async(args=[apply.pk , message.pk])
+        return Response(
+            data={
+                "succeeded" : True , 
+                "data" : serializer.data
+            } , 
+            status=HTTP_200_OK
+        )
+    return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
+
+
+    

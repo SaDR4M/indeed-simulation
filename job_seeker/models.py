@@ -64,13 +64,7 @@ class Answer(models.Model) :
 
 # TODO add state to it
 # resume of the job seeker
-class Resume(models.Model) :
-    
-
-        
-        
-        
-        
+class Resume(models.Model) :    
     job_seeker = models.OneToOneField(JobSeeker , on_delete=models.CASCADE )
     file = models.FileField(upload_to='resumes/' , null=True , blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

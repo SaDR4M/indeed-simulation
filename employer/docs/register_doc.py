@@ -25,6 +25,7 @@ employer_register_post_doc = swagger_auto_schema(
         type=openapi.TYPE_OBJECT,
         properties={
             "title" : openapi.Schema(type=openapi.TYPE_STRING , description="company name"),
+            "company_email" : openapi.Schema(type=openapi.TYPE_STRING , description="copmany email address"),
             "address" : openapi.Schema(type=openapi.TYPE_STRING , description="company address"),
             "postal_code" : openapi.Schema(type=openapi.TYPE_STRING , description="company postal code"),
             "id_number" : openapi.Schema(type=openapi.TYPE_STRING , description="compnay register id"),

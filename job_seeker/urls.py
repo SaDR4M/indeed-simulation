@@ -5,6 +5,7 @@ from . import views
 urlpatterns = [
     path('register/' , views.JobSeekerRegister.as_view(), name='register_jobseeker'),
     path('data/' , views.JobSeekerData.as_view() , name="job_seeker_data"),
+    path('update/' , views.UpdateJobSeekerApiView.as_view() , name="update_job_seeker"),
     path('resume/' , views.ResumeRegister.as_view(), name='resume_jobseeker'),
     path('apply/', views.ApplyForJob.as_view(), name="employer_aplly"),
     path('job-applies/' , views.AppliesForJob.as_view(), name="job_applies"),

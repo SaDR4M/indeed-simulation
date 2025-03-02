@@ -35,6 +35,23 @@ class JobSeekerData(APIView) :
         serializer = JobSeekerDataSerialzier(job_seeker)
         return Response(data={"detail" : serializer.data}, status=status.HTTP_200_OK)
     
+    
+class JobSeekerRegister(APIView) :
+    """Register the job seeker"""
+    
+    @job_seeker_register_post_doc
+    def post(self , request):
+        """Register job seeker"""
+        user = request.user
+        # return if job seeker exists
+        if JobSeeker.objects.filter(user=user).exists():
+            return Response(data={"detail" : "Job seeker exists for this user"} , status=status.HTTP_400_BAD_REQUEST)
+        # register the job seeker
+        response = register_job_seeker(request)
+        return response
+
+
+class UpdateJobSeekerApiView(APIView) :
 
     @job_seeker_data_patch_doc
     @job_seeker_required
@@ -51,22 +68,14 @@ class JobSeekerData(APIView) :
         # TODO fix the location update bug
         if serializer.is_valid():
             serializer.save(user=user)
-            return Response(data={"detail" : "job seeker updated successfully"}, status=status.HTTP_200_OK)
+            return Response(
+                data = {
+                    "succeeded" : True,
+                    "show" : True,
+                    "time" : 3000,
+                    "en_detail" : "job seeker updated successfully",
+                    "fa_detail" : "حساب با موفقیت آپدیت شد"
+                },
+                status=status.HTTP_200_OK
+            )
         return Response(data={"errors" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-    
-    
-    
-class JobSeekerRegister(APIView) :
-    """Register the job seeker"""
-    
-    @job_seeker_register_post_doc
-    def post(self , request):
-        """Register job seeker"""
-        user = request.user
-        # return if job seeker exists
-        if JobSeeker.objects.filter(user=user).exists():
-            return Response(data={"detail" : "Job seeker exists for this user"} , status=status.HTTP_400_BAD_REQUEST)
-        # register the job seeker
-        response = register_job_seeker(request)
-        return response
-

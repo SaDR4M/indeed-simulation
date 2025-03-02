@@ -5,6 +5,7 @@ from job_seeker.models import JobSeeker
 from location.models import Cities , Provinces
 from location.serializer import CitiesSerializer , ProvincesSerializer
 from job_seeker.serializers.resume_serializer import GetResumeSerializer
+from account.serializer import UserSimpleSerializer
 
 class JobSeekerSerializer(serializers.ModelSerializer):
     class Meta :
@@ -16,6 +17,7 @@ class JobSeekerSerializer(serializers.ModelSerializer):
 class UpdateJobSeekerSerializer(serializers.ModelSerializer) :
     province_id = serializers.IntegerField(required=False)
     city_id = serializers.IntegerField(required=False)
+    email = serializers.EmailField(required=False)
     class Meta :
         model = JobSeeker
         exclude = ['user' , 'city' , 'province']     
@@ -32,11 +34,17 @@ class UpdateJobSeekerSerializer(serializers.ModelSerializer) :
             instance.province = Provinces.objects.get(id=province)
         except :
             pass
+        try :
+            email = validated_data.get("email")
+            instance.user.email = email
+        except :
+            pass
         super().update(instance , validated_data)
         return instance
     
     
 class JobSeekerDataSerialzier(serializers.ModelSerializer) :
+    user = UserSimpleSerializer()
     city = CitiesSerializer()
     province = ProvincesSerializer()
     resume = GetResumeSerializer()

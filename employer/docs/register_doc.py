@@ -32,12 +32,13 @@ employer_register_post_doc = swagger_auto_schema(
             "province" : openapi.Schema(type=openapi.TYPE_STRING , description="Province of the employer"),
             "city" : openapi.Schema(type=openapi.TYPE_STRING , description="City of the employer"),
         },
-        required=["title" , "address" , "postal_code" , "id_number" , "province" , "city"]
+        required=["title" , "company_email" , "address" , "postal_code" , "id_number" , "province" , "city"]
         ),
     responses= {
         201 : "employer created successfully",
         400 : "invalid parameters",    
-    }
+    },
+    security=[{"Bearer" : []}]
 )
 
 employer_register_patch_doc = swagger_auto_schema(

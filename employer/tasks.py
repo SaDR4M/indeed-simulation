@@ -114,7 +114,7 @@ def send_resume_status(apply_pk , log_pk) :
 def expire_job_offer(job_offer_pk , log_pk) :
     
     try :
-        job_offer = JobOpportunity.objects.get(pk=job_offer_pk)
+        job_offer = JobOpportunity.objects.select_related("employer__user").get(pk=job_offer_pk)
         employer = job_offer.employer.user.email
         job_offer.active = False
         job_offer.save()

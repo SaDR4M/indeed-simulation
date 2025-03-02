@@ -26,7 +26,7 @@ class InterviewScheduleMixin:
             return Response(data={"error" : "apply id must be entered"} , status=status.HTTP_400_BAD_REQUEST)
         
         try :
-            apply = Application.objects.get(pk=apply_id)
+            apply = Application.objects.select_related("job_opportunity__employer").get(pk=apply_id)
             employer = apply.job_opportunity.employer
             
         except Application.DoesNotExist :

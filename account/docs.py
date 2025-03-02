@@ -43,6 +43,7 @@ sign_up_document = swagger_auto_schema(
             examples={
                 "application/json": {
                     "succeeded": True,
+                    "need_complete" : False,
                     "Authorization" : "Access token",
                     "role" : 10
                     }
@@ -73,6 +74,7 @@ sign_in_otp_document = swagger_auto_schema(
             examples={
                 "application/json": {
                     "succeeded": True,
+                    "need_complete" : False,
                     "Authorization" : "Access token",
                     "role" : 10
                     }
@@ -145,4 +147,26 @@ update_credential_document = swagger_auto_schema(
         400: openapi.Response(description="invalid credentials"),
     },
     security = [{"Bearer": []}]
+)
+
+user_data_complete_get_doc = swagger_auto_schema(
+    operation_summary="Get user need-complete data",
+    operation_description="Get some user data to check user need to complete the registeration or not",
+    responses={
+        200 : openapi.Response(
+            description="Ok",
+            examples={
+                "application/json" : {
+                    "mobile": "09036700953",
+                    "email": "null",
+                    "need_complete": "true",
+                    "role": 2,
+                    "name" : "-",
+                    "family_name" : "-"
+                }
+            }
+        )
+    },
+    security= [{"Bearer" : []}]
+    
 )

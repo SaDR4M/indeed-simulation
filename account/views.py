@@ -16,19 +16,21 @@ from rest_framework.views import APIView
 # third party imports
 from icecream import ic
 # local imports
+from account.serializer import UserNeedCompleteSerializer
 from account.models import User
-from account.utils import  (signin_user ,
-                            signup_user ,
-                            check_otp ,
-                            signin_user_wp ,
-                            update_user_password,
-                            validate_user_mobile,
-                            create_otp
-                            )
+from account.utils import  (
+    signin_user ,
+    signup_user ,
+    check_otp ,
+    signin_user_wp ,
+    update_user_password,
+    validate_user_mobile,
+    create_otp
+)
 from notifications.models import SmsCategory
 from core.send_sms import send_sms
 from core.make_call import make_call
-from account.docs import sign_in_otp_document , sign_up_document, sign_in_pass_document , update_credential_document , otp_document
+from account.docs import sign_in_otp_document , sign_up_document, sign_in_pass_document , update_credential_document , otp_document , user_data_complete_get_doc
 
 
 
@@ -224,9 +226,21 @@ class UpdateCredential(APIView) :
             return updated_pass
         return Response(status=HTTP_500_INTERNAL_SERVER_ERROR)
  
-
-
-
+ 
+class UserDataCompleteApiView(APIView) :
+    
+    permission_classes = [IsAuthenticated]
+    @user_data_complete_get_doc
+    def get(self , request) : 
+        "some specifc user data"
+        user = request.user 
+        # serialize user data
+        serializer = UserNeedCompleteSerializer(user)
+        data = serializer.data
+        return Response(
+            data = data,
+            status=HTTP_200_OK
+        )
 
 
 

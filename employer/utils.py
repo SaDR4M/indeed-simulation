@@ -105,6 +105,7 @@ def create_employer(request:object) -> Response:
         assign_perm('delete_employer' , user , employer)
         # change user role
         user.role = 1
+        user.need_complete = False
         user.save()
         return Response(
             data={

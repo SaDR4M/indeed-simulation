@@ -108,8 +108,18 @@ def register_job_seeker(request) :
         assign_base_permissions(user, job_seeker, "jobseeker")
         # change user role
         user.role = 2
+        user.need_complete = False
         user.save()
-        return Response(data={"detail" : "Job Seeker registered successfully"}, status=HTTP_201_CREATED)
+        return Response(
+            data={
+                "succeeded" : True,
+                "show" : True,
+                "time" : 3000,
+                "en_detail" : "Job Seeker registered successfully",
+                "fa_detail" : "حساب شما با موفقیت تکمیل شد"
+            }, 
+            status=HTTP_201_CREATED
+        )
     return Response(data={"errors" : serializer.errors}, status=HTTP_400_BAD_REQUEST)
 
 

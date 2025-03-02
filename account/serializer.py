@@ -41,7 +41,7 @@ class UpdateCredential(serializers.ModelSerializer):
 class UserSimpleSerializer(ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'mobile', 'name', 'family_name', 'is_active', 'is_real']
+        fields = ['id', 'mobile', 'email', 'name', 'family_name', 'is_active', 'is_real']
         
 class UserLogSerializerBRF(ModelSerializer):
     class Meta:
@@ -66,3 +66,8 @@ class UserSerializer(ModelSerializer):
                 'write_only': True,
             }
         }
+
+class UserNeedCompleteSerializer(ModelSerializer) : 
+    class Meta:
+        model = User
+        fields = ["mobile" , "email" , "need_complete" , "role" , "name" , "family_name"]

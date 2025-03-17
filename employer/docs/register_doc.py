@@ -2,12 +2,12 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 # local imports
-from employer.serializers import EmployerSerializer 
+from employer.serializers import EmployerSerializer , UpdateEmployerSerializer
 
 
 employer_register_get_doc = swagger_auto_schema(
-    operation_summary="get employer infomartion",
-    operation_description="get the employer information if the user is employer",
+    operation_summary="Get employer data",
+    operation_description="Get the employer information if the user is employer",
     responses= {
         200 : EmployerSerializer,   
         400 : "invalid parameters",
@@ -19,12 +19,12 @@ employer_register_get_doc = swagger_auto_schema(
 )
 
 employer_register_post_doc = swagger_auto_schema(
-    operation_summary="register employer",
-    operation_description="register the user if this user is not employer",
+    operation_summary="Register employer",
+    operation_description="Register the user if this user is not employer",
     request_body= openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
-            "title" : openapi.Schema(type=openapi.TYPE_STRING , description="company name"),
+            "company_name" : openapi.Schema(type=openapi.TYPE_STRING , description="company name"),
             "company_email" : openapi.Schema(type=openapi.TYPE_STRING , description="copmany email address"),
             "address" : openapi.Schema(type=openapi.TYPE_STRING , description="company address"),
             "postal_code" : openapi.Schema(type=openapi.TYPE_STRING , description="company postal code"),
@@ -32,7 +32,7 @@ employer_register_post_doc = swagger_auto_schema(
             "province" : openapi.Schema(type=openapi.TYPE_STRING , description="Province of the employer"),
             "city" : openapi.Schema(type=openapi.TYPE_STRING , description="City of the employer"),
         },
-        required=["title" , "company_email" , "address" , "postal_code" , "id_number" , "province" , "city"]
+        required=["company_name" , "company_email" , "address" , "postal_code" , "id_number" , "province" , "city"]
         ),
     responses= {
         201 : "employer created successfully",
@@ -42,11 +42,11 @@ employer_register_post_doc = swagger_auto_schema(
 )
 
 employer_register_patch_doc = swagger_auto_schema(
-    operation_summary="edit the employer information",
-    operation_description="change the information of the user if employer exists",
-    request_body=EmployerSerializer,
+    operation_summary="Update employer information",
+    operation_description="Update the information of the user if employer exists",
+    request_body=UpdateEmployerSerializer,
     responses={
-        200 : EmployerSerializer,
+        200 : UpdateEmployerSerializer,
         404 : "employer was not found",
         403 : "user doesn't have permission to change this data",
     },

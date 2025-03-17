@@ -181,7 +181,7 @@ class AllJobOffers(APIView  , FilterJobOpportunityMixin) :
             return filtered_job_offer
         
         # paginate the data
-        paginator = LimitOffsetPagination()
+        paginator = LimitOffsetPagination() 
         paginator.paginate_queryset(filtered_job_offer , request)
         
         serializer = GetJobOpportunitySerializer(filtered_job_offer , many=True)

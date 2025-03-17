@@ -2,16 +2,42 @@
 from django.urls import include
 from rest_framework.validators import ValidationError
 from rest_framework import serializers
-
+from rest_framework.validators import ValidationError
 # local import
 from employer.models import Employer, JobOpportunity, ViewedResume, InterviewSchedule, ViewedAppliedResume
 from package.models import Package
 from job_seeker.models import Resume , Application 
+from location.serializer import CitiesSerializer , ProvincesSerializer
+from location.models import Cities , Provinces
 
 class EmployerSerializer(serializers.ModelSerializer) :
+    city = CitiesSerializer()
+    province = ProvincesSerializer()
     class Meta :
         model = Employer
-        exclude = ['user'  , 'province', 'city']
+        exclude = ['user']
+
+class UpdateEmployerSerializer(serializers.ModelSerializer) :
+    province_id = serializers.IntegerField(required=False)
+    city_id = serializers.IntegerField(required=False)
+    class Meta :
+        model = Employer
+        exclude = ['user' , 'city' , 'province']     
+        
+    def update(self , instance , validated_data) : 
+        try :
+            city = validated_data.get("city_id")
+            province = validated_data.get("province_id")
+            instance.city = Cities.objects.get(id=city , province_id = province)
+        except : 
+            raise ValidationError("city and province must be matched")
+        try :
+            province = validated_data.get("province_id")
+            instance.province = Provinces.objects.get(id=province)
+        except :
+            pass
+        super().update(instance , validated_data)
+        return instance
         
 
 class JobOpportunitySerializer(serializers.ModelSerializer) :

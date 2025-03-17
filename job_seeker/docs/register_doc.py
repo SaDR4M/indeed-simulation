@@ -25,7 +25,8 @@ job_seeker_data_patch_doc = swagger_auto_schema(
                 "gender" : openapi.Schema(type=openapi.TYPE_STRING , description="options are : \n 1) male \n 2) female"),
                 "bio" : openapi.Schema(type=openapi.TYPE_STRING , description="job seeker bio"),
                 "province_id" : openapi.Schema(type=openapi.TYPE_STRING , description="job seeker province"),
-                "city_id" : openapi.Schema(type=openapi.TYPE_STRING , description="job seeker city")
+                "city_id" : openapi.Schema(type=openapi.TYPE_STRING , description="job seeker city"),
+                "email" : openapi.Schema(type=openapi.TYPE_STRING , description="job seeker email")
             },
             required=[]   
         ),

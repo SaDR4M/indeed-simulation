@@ -1,5 +1,6 @@
 # third party imports
 from rest_framework import serializers
+from icecream import ic
 # local imports
 from job_seeker.models import JobSeeker
 from location.models import Cities , Provinces
@@ -26,7 +27,7 @@ class UpdateJobSeekerSerializer(serializers.ModelSerializer) :
         try :
             city = validated_data.get("city_id")
             province = validated_data.get("province_id")
-            instance.city = Cities.objects.get(id=city)
+            instance.city = Cities.objects.get(id=city , province_id = province)
         except : 
             pass
         try :
@@ -37,6 +38,7 @@ class UpdateJobSeekerSerializer(serializers.ModelSerializer) :
         try :
             email = validated_data.get("email")
             instance.user.email = email
+            instance.user.save()
         except :
             pass
         super().update(instance , validated_data)

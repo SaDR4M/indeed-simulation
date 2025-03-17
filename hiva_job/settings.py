@@ -144,7 +144,7 @@ REST_FRAMEWORK = {
     ),  
     'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'PAGE_SIZE': 10
+    'PAGE_SIZE': 15
 }
 # jwt settings
 SIMPLE_JWT = {
@@ -191,7 +191,8 @@ SWAGGER_SETTINGS = {
             'in': 'header'
       }
    },
-   "DEFAULT_MODEL_RENDERING": "example"
+   "DEFAULT_MODEL_RENDERING": "example",
+   'USE_SESSION_AUTH': False
 }
 
 # guardian

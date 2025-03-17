@@ -72,7 +72,8 @@ class Resume(models.Model) :
     skills = models.JSONField(default=dict , null=True)
     experience = models.CharField(choices=ExperienceChoices)
     education = models.CharField(choices=EducationChoices)
-    stack = models.ManyToManyField(TechnologyCategory , related_name="resume")
+    # TODO remove null and blank
+    stack = models.ManyToManyField(TechnologyCategory , related_name="resume" , null=True , blank=True)
     
     test = models.ManyToManyField(Test , related_name="resume")
     

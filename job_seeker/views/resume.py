@@ -63,7 +63,7 @@ class ResumeRegister(APIView) :
 
     @resume_register_patch_doc
     @job_seeker_required
-    def patch(self , request , job_seeker):
+    def patch(self , request):
         """Update job seeker resume"""
         job_seeker = request.job_seeker
         # get resume

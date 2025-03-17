@@ -18,7 +18,7 @@ from job_seeker.docs import (
     job_seeker_register_post_doc,
 )
 # Create your views here.
-class JobSeekerData(APIView) : 
+class JobSeekerDataApiView(APIView) : 
     """Get / Update job seeker data"""
     permission_classes = [IsAuthenticated]
     
@@ -36,7 +36,7 @@ class JobSeekerData(APIView) :
         return Response(data={"detail" : serializer.data}, status=status.HTTP_200_OK)
     
     
-class JobSeekerRegister(APIView) :
+class JobSeekerRegisterApiView(APIView) :
     """Register the job seeker"""
     
     @job_seeker_register_post_doc
@@ -67,15 +67,10 @@ class UpdateJobSeekerApiView(APIView) :
         serializer = UpdateJobSeekerSerializer(job_seeker , data=request.data , partial=True)
         # TODO fix the location update bug
         if serializer.is_valid():
-            serializer.save(user=user)
+            serializer.update(job_seeker , serializer.validated_data)
+            data = JobSeekerDataSerialzier(job_seeker)
             return Response(
-                data = {
-                    "succeeded" : True,
-                    "show" : True,
-                    "time" : 3000,
-                    "en_detail" : "job seeker updated successfully",
-                    "fa_detail" : "حساب با موفقیت آپدیت شد"
-                },
+                data = data.data,
                 status=status.HTTP_200_OK
             )
         return Response(data={"errors" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)

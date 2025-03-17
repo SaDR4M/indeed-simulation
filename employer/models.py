@@ -15,7 +15,7 @@ class Employer(models.Model):
     
     user = models.OneToOneField(User, on_delete=models.CASCADE , related_name="employer")
     company_email = models.EmailField(max_length=512 , null=False , blank=False)
-    title = models.CharField(max_length=100 , help_text="company name")
+    company_name = models.CharField(max_length=100 , help_text="company name")
     address = models.CharField(max_length=250)
     id_number = models.CharField(max_length=25 , help_text="company register number")
     postal_code = models.CharField(max_length=25)

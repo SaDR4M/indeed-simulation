@@ -70,7 +70,7 @@ class PurchasePackage(APIView , FilterPackageMixin) :
     
     
     @swagger_auto_schema(
-        operation_summary="create payment",
+        operation_summary="purchase package",
         operation_description="purchase package if the payment is completed",
         request_body=PurchasePackageSerializer,
         responses={
@@ -87,15 +87,19 @@ class PurchasePackage(APIView , FilterPackageMixin) :
         serializer = PurchasePackageSerializer(data=request.data , context = {"request" : request})
         if serializer.is_valid() :
             data = serializer.validated_data
-            payment = data['payment']
+            # payment = data['payment']
             package = data['package']
             # not acitve packages can not be bought        
             if package.active == False :
                 return Response(data={"detail" : "Package is not available"} , status=status.HTTP_404_NOT_FOUND)
-            # only completed payments can buy packages
-            if payment.status == "completed" :
-                purchased = serializer.save(employer=employer , payment=payment , package=package)
+            # NOTE for bypassing the payment
+            else :
+                serializer.save(employer=employer , package=package)
                 return Response(data={"detail" : "Purchase was successfull"} , status=status.HTTP_201_CREATED)
-            return Response(data={"detail" : f" failed ,  purchase status : {payment.status}"} , status=status.HTTP_400_BAD_REQUEST)
+            # only completed payments can buy packages
+            # if payment.status == "completed" :
+            #     purchased = serializer.save(employer=employer , payment=payment , package=package)
+            #    return Response(data={"detail" : "Purchase was successfull"} , status=status.HTTP_201_CREATED)
+            # return Response(data={"detail" : f" failed ,  purchase status : {payment.status}"} , status=status.HTTP_400_BAD_REQUEST)
         return Response(data={"detail" : serializer.errors } , status=status.HTTP_400_BAD_REQUEST)
 

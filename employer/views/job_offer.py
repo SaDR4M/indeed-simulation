@@ -55,6 +55,9 @@ class JobOffer(APIView , FilterJobOpportunityMixin) :
         
         # check for employer to exist
         employer = request.employer
+        print(priority)
+        print(request.data)
+        # TODO purhcased packages
         # check the employer package purchased and order it base on the date of purchase
         purchased_packages = can_create_offer(employer  , priority)
         # check that user can make offer or not

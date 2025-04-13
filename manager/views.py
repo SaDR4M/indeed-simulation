@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework import status
 from rest_framework.response import Response
-
+from django.utils import timezone
 # local imports
 from package.mixins import FilterPackageMixin
 from package.serializers import GetPackageSerializer , PackageSerializer
@@ -25,6 +25,12 @@ from employer.models import JobOpportunity
 from employer.serializers import JobOpportunitySerializer
 from employer.mixins import FilterEmployerMixin
 
+from manager.models import TechnologyCategory
+from manager.serializer import (
+    TechnologyCategoryCreateSerializer,
+    TechnologyCategoryShowSerializer,
+    TechnologyCategoryUpdateSerializer
+)
 from guardian.shortcuts import get_objects_for_user , assign_perm
 # Create your views here.
 
@@ -35,8 +41,8 @@ from guardian.shortcuts import get_objects_for_user , assign_perm
 class CreatePackage(APIView) :
     
     @swagger_auto_schema(
-        operation_summary="create payment",
-        operation_description="create payment",
+        operation_summary="create package",
+        operation_description="create package",
         responses={
             200 : PackageSerializer,
             400 : "invalid parameters",
@@ -65,7 +71,7 @@ class CreatePackage(APIView) :
     ) 
     def post(self , request) :
         user = request.user
-        if not user.is_superuser :
+        if user.role != 10 :
             return Response(data={"detail" : "user does not have permission to do this action"} ,status=status.HTTP_403_FORBIDDEN)
         serializer = PackageSerializer(data=request.data)
         if serializer.is_valid() :
@@ -145,7 +151,7 @@ class AllPackage(APIView , FilterPackageMixin) :
     )
     def get(self , request) :
         user = request.user 
-        if not user.is_superuser :
+        if user.role != 10 :
             return Response(data={"error" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
         
         packages = Package.objects.all()
@@ -434,7 +440,7 @@ class AllJobSeekers(APIView , JobSeekerFilterMixin) :
     
     def get(self , request) :
         user = request.user
-        if not user.is_superuser :
+        if user.role != 10 :
             return Response(data={"error" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN) 
         
         filtered_jobseekers = self.filter_jobseeker()       
@@ -526,7 +532,7 @@ class AllEmployers(APIView , FilterEmployerMixin) :
     def get(self , request) :
         """get all the employer with some filtering"""
         user = request.user
-        if not user.is_superuser :
+        if user.role != 10 :
             return Response(data={"error" : "User does not have permission to do this action"}  , status=status.HTTP_403_FORBIDDEN)
         
         employer = self.filter_employer()
@@ -540,3 +546,145 @@ class AllEmployers(APIView , FilterEmployerMixin) :
         
         serializer = GetEmployerSerializer(employer , many=True)
         return Response(data={"data" : serializer.data} , status=status.HTTP_200_OK)
+
+
+class TechnologyCategoryMngApiView(APIView) :
+    def get(self , request) : 
+        """List of all technologies"""
+        user = request.user
+        if user.role != 10 :
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        technologies = TechnologyCategory.objects.filter(
+            deleted=False
+        )
+        serializer = TechnologyCategoryShowSerializer(technologies , many=True)
+        return Response(
+            data = {
+                "succeeded" : True,
+                "data" : serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
+    
+    def post(self , request) :
+        """Add technology"""
+        user = request.user
+        if user.role != 10 :
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        serializer = TechnologyCategoryCreateSerializer(data=request.data)
+        if serializer.is_valid() :
+            serializer.save(created_by=user)
+            return Response(
+                data = {
+                    "succeeded" : True,
+                    "show" : True,
+                    "time" : 3000,
+                    "en_detail" : "stack has been addded successfully",
+                    "fa_detail" : "استک با موفقیت اضافه شد"
+                },
+                status=status.HTTP_201_CREATED
+            )
+        return Response(
+                data = {
+                    "succeeded" : False,
+                    "show" : True,
+                    "time" : 3000,
+                    "en_detail" : "something wrong happend",
+                    "fa_detail" : "مشکلی در اضافه کردن استک به وجود آمد",
+                    "errors" : serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    def patch(self , request) :
+        """Update technology"""
+        user = request.user
+        if user.role != 10 :
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        stack = request.data.get("stack")
+        if not stack :
+            return Response(
+                data = {
+                    "succeeded" : False,
+                    "show" : False,
+                    "en_detail" : "stack must be entered"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try :
+            technology = TechnologyCategory.objects.get(id=stack , deleted=False)
+        except TechnologyCategory.DoesNotExist :
+            return Response(
+                data = {
+                    "succeeded" : False,
+                    "show" : False,
+                    "en_detail" : "technology does not exists"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        serializer = TechnologyCategoryUpdateSerializer(technology , data=request.data , partial=True)
+        if serializer.is_valid() :
+            serializer.save()
+            return Response(
+                data = {
+                    "succeeded" : True,
+                    "show" : True,
+                    "time" : 3000,
+                    "en_detail" : "stack has been updated successfully",
+                    "fa_detail" : "استک با موفقیت آپدیت شد"
+                },
+                status=status.HTTP_201_CREATED
+            )
+        return Response(
+                data = {
+                    "succeeded" : False,
+                    "show" : True,
+                    "time" : 3000,
+                    "en_detail" : "something wrong happend",
+                    "fa_detail" : "مشکلی در آپدیت کردن استک به وجود آمد",
+                    "errors" : serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    def delete(self , request) : 
+        """Delete technology"""
+        user = request.user
+        if user.role != 10 :
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        stack = request.data.get("stack")
+        user = request.user
+        if not stack :
+            return Response(
+                data = {
+                    "succeeded" : False,
+                    "show" : False,
+                    "en_detail" : "stack must be entered"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try :
+            technology = TechnologyCategory.objects.get(id=stack , deleted=False)
+        except TechnologyCategory.DoesNotExist :
+            return Response(
+                data = {
+                    "succeeded" : False,
+                    "show" : False,
+                    "en_detail" : "technology does not exists"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        technology.deleted = True
+        technology.deleted_at = timezone.now()
+        technology.deleted_by = user
+        technology.save()
+        return Response(
+            data = {
+                "succeeded" : True,
+                "show" : True,
+                "time" : 3000,
+                "en_detail" : "stack has been deleted successfully",
+                "fa_detail" : "استک با موفقیت حذف شد"
+            },
+            status=status.HTTP_201_CREATED
+        )

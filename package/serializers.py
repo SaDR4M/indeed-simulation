@@ -45,16 +45,16 @@ class GetPackageSerializer(serializers.ModelSerializer) :
 
 class PurchasePackageSerializer(serializers.ModelSerializer) :
     package = serializers.PrimaryKeyRelatedField(queryset=Package.objects.all())
-    payment = serializers.PrimaryKeyRelatedField(queryset=Payment.objects.all())
+    # payment = serializers.PrimaryKeyRelatedField(queryset=Payment.objects.all())
     class Meta :
         model = PurchasedPackage
-        exclude = ['employer' , 'remaining']
+        exclude = ['employer' , 'remaining' , 'active']
     
-    def validate_payment(self , attr) :
-        user = self.context.get('request').user
-        if attr.employer.user != user :
-            raise ValidationError("the payment does not belong to the user")
-        return attr
+    # def validate_payment(self , attr) :
+    #     user = self.context.get('request').user
+    #     if attr.employer.user != user :
+    #         raise ValidationError("the payment does not belong to the user")
+    #     return attr
     
 class GetPurchasedPackageSerializer(serializers.ModelSerializer) :
     class Meta :

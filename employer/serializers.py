@@ -11,8 +11,8 @@ from location.serializer import CitiesSerializer , ProvincesSerializer
 from location.models import Cities , Provinces
 
 class EmployerSerializer(serializers.ModelSerializer) :
-    city = CitiesSerializer()
-    province = ProvincesSerializer()
+    # city = CitiesSerializer()
+    # province = ProvincesSerializer()
     class Meta :
         model = Employer
         exclude = ['user']

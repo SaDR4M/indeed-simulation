@@ -10,4 +10,5 @@ urlpatterns = [
     path('all-jobseekers/' , views.AllJobSeekers.as_view() , name="all_jobseekers"),
     path('all-employers/' , views.AllEmployers.as_view() , name='all_employers'),
     path('change-offer-status/' , views.ChangeJobOfferStatus.as_view() , name="change_offer_status"),
+    path('stack/' , views.TechnologyCategoryMngApiView.as_view())
 ]

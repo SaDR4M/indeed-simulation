@@ -5,6 +5,7 @@ from rest_framework.status import HTTP_200_OK , HTTP_201_CREATED , HTTP_400_BAD_
 # third party imports
 from datetime import datetime
 from guardian.shortcuts import assign_perm
+from icecream import ic
 # local imports
 from employer.models import Employer , JobOpportunity , ViewedResume , ViewedAppliedResume , InterviewSchedule
 from employer.serializers import (
@@ -23,7 +24,9 @@ from location.utils import get_province , get_city
 from job_seeker.models import JobSeeker , Application 
 # can not make job opportunity if they do not have any packages
 def can_create_offer(employer , priority) :
+    ic(priority)
     purchased = PurchasedPackage.objects.filter(employer=employer , package__type="offer"  , package__priority=priority,  active=True).order_by('bought_at')
+    ic(PurchasedPackage.objects.filter(employer=employer , package__type="offer" , package__priority=priority))
     if purchased.exists() :
         return purchased.first()
     return False

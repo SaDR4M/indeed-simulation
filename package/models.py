@@ -32,7 +32,7 @@ class Package(models.Model) :
 class PurchasedPackage(models.Model) : 
     package = models.ForeignKey(Package , on_delete=models.CASCADE , related_name="purchases")
     employer = models.ForeignKey(Employer , on_delete=models.CASCADE , related_name="packages")
-    payment = models.ForeignKey(Payment , on_delete=models.CASCADE)
+    # payment = models.ForeignKey(Payment , on_delete=models.CASCADE)
     remaining = models.IntegerField()
     bought_at = models.DateTimeField(auto_now_add=True)
     active = models.BooleanField(default=True)

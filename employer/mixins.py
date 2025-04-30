@@ -314,7 +314,8 @@ class FilterJobOpportunityMixin(LocationFilterMixin , GenderFilterMixin , Creati
                 **self.creation_time_filter_allow_list,
                 "active" : {"model_field" : "active" , "lookup" : "exact"},
                 "title" : {"model_field" : "title" , "lookup" : "icontains"},
-                "status" : {"model_field" : "status" , "lookup" : "icontains"}
+                "status" : {"model_field" : "status" , "lookup" : "icontains"},
+                "stack" : {"model_field" : "stack_id" , "lookup" : "exact"},
             }
             
             

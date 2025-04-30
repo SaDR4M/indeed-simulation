@@ -22,7 +22,10 @@ class Employer(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     province = models.ForeignKey(Provinces , related_name="state_employers" , on_delete=models.CASCADE , default=8 , help_text="province of the company . default is Tehran")
     city = models.ForeignKey(Cities , related_name="city_emoployers" , on_delete=models.CASCADE , default=301 , help_text="city of the company . default is Tehran")
-
+    is_banned = models.BooleanField(default=False)
+    banned_by = models.ForeignKey(User, related_name="banned_employers", on_delete=models.CASCADE, null=True, blank=True)
+    banned_at = models.DateTimeField(null=True , blank=True)
+    banned_description = models.CharField(max_length=255 , null=True , blank=True)
     
 # opportunity that employer makes
 class JobOpportunity(models.Model):
@@ -46,11 +49,19 @@ class JobOpportunity(models.Model):
     active = models.BooleanField(
         default=False
     )
+    deleted = models.BooleanField(
+        default=False
+    )
     title = models.CharField(
         max_length=100
     )
     description = models.TextField(
         max_length=500
+    )
+    stack_description = models.TextField(
+        max_length=500,
+        null=True,
+        blank=True
     )
     status = models.CharField(
         choices=OfferStatus ,

@@ -57,7 +57,8 @@ class ResumeRegister(APIView) :
                 }
             )
         # create resume
-        response = create_resume(request , job_seeker , user)
+        stacks = request.data.get('stack').split(',')
+        response = create_resume(request , job_seeker , user , stacks)
         return response
 
 

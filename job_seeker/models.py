@@ -29,7 +29,10 @@ class JobSeeker(GenderMixin):
     created_at = models.DateTimeField(auto_now_add=True)
     province = models.ForeignKey(Provinces , related_name="state_jobseekers" , on_delete=models.CASCADE , default=8)
     city = models.ForeignKey(Cities , related_name="city_jobseekers" , on_delete=models.CASCADE , default=301)
-   
+    is_banned = models.BooleanField(default=False)
+    banned_by = models.ForeignKey(User, related_name="banned_jobseekers", on_delete=models.CASCADE, null=True, blank=True)   
+    banned_at = models.DateTimeField(null=True , blank=True)
+    banned_description = models.CharField(max_length=255 , null=True , blank=True)
 
 
 

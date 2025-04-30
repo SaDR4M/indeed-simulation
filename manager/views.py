@@ -1,14 +1,18 @@
 
 import datetime
-# third party imports
+# django & rest
 from django.shortcuts import render
-from drf_yasg import openapi
-from drf_yasg.utils import swagger_auto_schema
 from rest_framework.views import APIView
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework import status
 from rest_framework.response import Response
 from django.utils import timezone
+from rest_framework.permissions import IsAuthenticated
+# third party imports
+from icecream import ic
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+from guardian.shortcuts import get_objects_for_user , assign_perm
 # local imports
 from package.mixins import FilterPackageMixin
 from package.serializers import GetPackageSerializer , PackageSerializer
@@ -18,10 +22,10 @@ from .serializer import GetEmployerSerializer
 from . import utils
 
 from job_seeker.mixins import FilterTestMixin , FilterQuestionMixin , JobSeekerFilterMixin
-from job_seeker.models import Test , Question 
+from job_seeker.models import Test , Question , JobSeeker
 from job_seeker.serializers import TestSerializer , QuestionSerializer , JobSeekerDataSerialzier
 
-from employer.models import JobOpportunity
+from employer.models import JobOpportunity , Employer
 from employer.serializers import JobOpportunitySerializer
 from employer.mixins import FilterEmployerMixin
 
@@ -31,7 +35,8 @@ from manager.serializer import (
     TechnologyCategoryShowSerializer,
     TechnologyCategoryUpdateSerializer
 )
-from guardian.shortcuts import get_objects_for_user , assign_perm
+from core.filter import filter_query
+
 # Create your views here.
 
 # PACKAGES
@@ -51,11 +56,22 @@ class CreatePackage(APIView) :
     )
     def get(self , request) :
         user = request.user
-        if not user.is_superuser :
+        if user.role != 10 :
             return Response(data={"detail" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN)
-        packages = Package.objects.filter(user=user)
-        if not packages.exists() :
-            return Response(data={"detail" : "there is no package for this admin"} , status=status.HTTP_404_NOT_FOUND)
+        # filter the packages
+        allowed_filter = (
+            "active",
+            "type",
+            "priority",
+            "price__gte",
+            "price__lte",
+            "count",
+            "count__gte",
+            "count__lte"
+        )
+        filters = filter_query(allowed_filter , request.query_params)
+        packages = Package.objects.filter(**filters).all()
+        # serialize the data
         serializer = PackageSerializer(packages , many=True)
         return Response(data={"detail" : serializer.data} , status=status.HTTP_200_OK)
 
@@ -436,24 +452,79 @@ class ManageQuestion(APIView , FilterQuestionMixin) :
 
 # JOB SEEKERS
 
-class AllJobSeekers(APIView , JobSeekerFilterMixin) :
+class JobSeekersMng(APIView , JobSeekerFilterMixin) :
     
     def get(self , request) :
         user = request.user
         if user.role != 10 :
             return Response(data={"error" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN) 
         
-        filtered_jobseekers = self.filter_jobseeker()       
-        if isinstance(filtered_jobseekers , Response) :
-            return filtered_jobseekers   
-
+        # filtered_jobseekers = self.filter_jobseeker()       
+        # if isinstance(filtered_jobseekers , Response) :
+        #     return filtered_jobseekers   
+        allowed_filter = (
+            "is_banned"
+            'city_id',
+            'province_id',
+        )
+        filter_parameters = filter_query(allowed_filter , request.query_params)
+        job_seekers = JobSeeker.objects.filter(**filter_parameters).all()
         # paginate the dataA
         paginator = LimitOffsetPagination()
-        paginator.paginate_queryset(filtered_jobseekers , request)
+        paginator.paginate_queryset(job_seekers , request)
         
-        serializer = JobSeekerDataSerialzier(filtered_jobseekers , many=True)
+        serializer = JobSeekerDataSerialzier(job_seekers , many=True)
         return Response(data={"data" : serializer.data} , status=status.HTTP_200_OK)
-
+    
+    
+    def delete(self , request) :
+        "deactivate the jobseeker"
+        user = request.user
+        if user.role != 10 :
+            return Response(data={"error" : "User does not have permission to do this action"}  , status=status.HTTP_403_FORBIDDEN)  
+        job_seeker_id = request.data.get("job_seeker")
+        if not job_seeker_id :
+            return Response(
+                data = {
+                    "succeeded" : False,
+                    "show" : True,
+                    "time" : 3000,
+                    "en_detail" : "job_seeker_id is required",
+                    "fa_detail" : "کارفرما باید انتخاب شود"
+                },
+                status = status.HTTP_400_BAD_REQUEST
+            )
+        try :
+            job_seeker = JobSeeker.objects.get(id=job_seeker_id)
+        except JobSeeker.DoesNotExist :
+            return Response(
+                data = {
+                    "succeeded" : False,
+                    "show" : True,
+                    "time" : 3000,
+                    "en_detail" : "job seeker does not exists",
+                    "fa_detail" : "کارجو وجود ندارد"
+                },
+                status = status.HTTP_404_NOT_FOUND
+            )
+        # job seeker soft delete
+        banned_description = request.data.get('banned_description')
+        if banned_description :
+            employer.banned_description = banned_description
+        job_seeker.is_banned = True
+        job_seeker.banned_by = user
+        job_seeker.banned_at = timezone.now()
+        job_seeker.save()
+        return Response(
+            data = {
+                "succeeded" : True,
+                "show" : True,
+                "time" : 3000,
+                "en_detail" : "job_seeker has been deactivated",
+                "fa_detail" : "کارجو با موفقیت غیرفعال شد"
+            },
+            status = status.HTTP_200_OK
+        )
 
 # EMPLOYERS 
 
@@ -528,35 +599,88 @@ class ChangePackagePrice(APIView) :
         return Response(data={"success" : False , "errors" : serializer.errors} , status=status.HTTP_400_BAD_REQUEST)
     
     
-class AllEmployers(APIView , FilterEmployerMixin) :
+class EmployersMng(APIView , FilterEmployerMixin) :
     def get(self , request) :
         """get all the employer with some filtering"""
         user = request.user
         if user.role != 10 :
             return Response(data={"error" : "User does not have permission to do this action"}  , status=status.HTTP_403_FORBIDDEN)
         
-        employer = self.filter_employer()
+        # employer = self.filter_employer()
         # return the response if there was any problem
-        if isinstance(employer , Response) :
-            return employer
-        
+        # if isinstance(employer , Response) :
+            # return employer
+        allowed_filter = (
+            'company_name',
+            'postal_code',
+            'city_id',
+            'province_id',
+            "is_banned"
+        )
+        filter_parametrs = filter_query(allowed_filter , request.query_params)
+        employers = Employer.objects.filter(**filter_parametrs).all()
         # paginate the result
         paginator = LimitOffsetPagination()
-        paginator.paginate_queryset(employer , request)
+        paginator.paginate_queryset(employers , request)
         
-        serializer = GetEmployerSerializer(employer , many=True)
+        serializer = GetEmployerSerializer(employers , many=True)
         return Response(data={"data" : serializer.data} , status=status.HTTP_200_OK)
 
-
-class TechnologyCategoryMngApiView(APIView) :
-    def get(self , request) : 
-        """List of all technologies"""
+    def delete(self , request) :
+        "deactivate the employer"
         user = request.user
         if user.role != 10 :
-            return Response(status=status.HTTP_403_FORBIDDEN)
-        technologies = TechnologyCategory.objects.filter(
-            deleted=False
+            return Response(data={"error" : "User does not have permission to do this action"}  , status=status.HTTP_403_FORBIDDEN)  
+        employer_id = request.data.get("employer")
+        if not employer_id :
+            return Response(
+                data = {
+                    "succeeded" : False,
+                    "show" : True,
+                    "time" : 3000,
+                    "en_detail" : "employer is required",
+                    "fa_detail" : "کارفرما باید انتخاب شود"
+                },
+                status = status.HTTP_400_BAD_REQUEST
+            )
+        try :
+            employer = Employer.objects.get(id=employer_id)
+        except Employer.DoesNotExist :
+            return Response(
+                data = {
+                    "succeeded" : False,
+                    "show" : True,
+                    "time" : 3000,
+                    "en_detail" : "Employer does not exists",
+                    "fa_detail" : "کارفرما با موفقیت وجود ندارد"
+                },
+                status = status.HTTP_404_NOT_FOUND
+            )
+        # employer soft delete
+        banned_description = request.data.get('banned_description')
+        if banned_description :
+            employer.banned_description = banned_description
+        employer.is_banned = True
+        employer.banned_by = user
+        employer.banned_at = timezone.now()
+        employer.save()
+        return Response(
+            data = {
+                "succeeded" : True,
+                "show" : True,
+                "time" : 3000,
+                "en_detail" : "employer has been deactivated",
+                "fa_detail" : "کارفرما غیرفعال شد"
+            },
+            status = status.HTTP_200_OK
         )
+    
+
+class TechnologyCategoryMngApiView(APIView) :
+    permission_classes = [IsAuthenticated]
+    def get(self , request) : 
+        """List of all technologies"""
+        technologies = TechnologyCategory.objects.all().order_by('id')
         serializer = TechnologyCategoryShowSerializer(technologies , many=True)
         return Response(
             data = {
@@ -612,7 +736,7 @@ class TechnologyCategoryMngApiView(APIView) :
                 status=status.HTTP_400_BAD_REQUEST
             )
         try :
-            technology = TechnologyCategory.objects.get(id=stack , deleted=False)
+            technology = TechnologyCategory.objects.get(id=stack)
         except TechnologyCategory.DoesNotExist :
             return Response(
                 data = {
@@ -664,7 +788,8 @@ class TechnologyCategoryMngApiView(APIView) :
                 status=status.HTTP_400_BAD_REQUEST
             )
         try :
-            technology = TechnologyCategory.objects.get(id=stack , deleted=False)
+            technology = TechnologyCategory.objects.get(id=stack)
+            technology.delete()
         except TechnologyCategory.DoesNotExist :
             return Response(
                 data = {
@@ -674,10 +799,6 @@ class TechnologyCategoryMngApiView(APIView) :
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
-        technology.deleted = True
-        technology.deleted_at = timezone.now()
-        technology.deleted_by = user
-        technology.save()
         return Response(
             data = {
                 "succeeded" : True,
@@ -686,5 +807,5 @@ class TechnologyCategoryMngApiView(APIView) :
                 "en_detail" : "stack has been deleted successfully",
                 "fa_detail" : "استک با موفقیت حذف شد"
             },
-            status=status.HTTP_201_CREATED
+            status=status.HTTP_200_OK
         )

@@ -37,13 +37,13 @@ def job_seeker_exists(user) :
     return job_seeker
 
 
-def create_resume(request:object , job_seeker:object , user:object) -> Response :
+def create_resume(request:object , job_seeker:object , user:object , stacks:list) -> Response :
     """Create resume for job seeker"""
     serializer = ResumeSerializer(data=request.data)
     if serializer.is_valid():
         data = serializer.validated_data
         data['job_seeker'] = job_seeker
-        resume = serializer.save()
+        resume = serializer.save(stack=stacks)
         # assign the basic permission to the user
         # its better handle this in signals cause there is security problem if we create the resume and the assign does not work
         assign_base_permissions(user , resume , "resume")

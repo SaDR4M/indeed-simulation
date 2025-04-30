@@ -9,10 +9,12 @@ from package.models import Package
 from job_seeker.models import Resume , Application 
 from location.serializer import CitiesSerializer , ProvincesSerializer
 from location.models import Cities , Provinces
+from manager.serializer import TechnologyCategoryShowSerializer
+
 
 class EmployerSerializer(serializers.ModelSerializer) :
-    # city = CitiesSerializer()
-    # province = ProvincesSerializer()
+    city = CitiesSerializer()
+    province = ProvincesSerializer()
     class Meta :
         model = Employer
         exclude = ['user']
@@ -39,12 +41,16 @@ class UpdateEmployerSerializer(serializers.ModelSerializer) :
         super().update(instance , validated_data)
         return instance
         
-
+class JobOpportunityUpdateSerializer(serializers.ModelSerializer) :
+    class Meta :
+        model = JobOpportunity
+        exclude = ['employer' ,'active'  , 'status']
+        
 class JobOpportunitySerializer(serializers.ModelSerializer) :
     # package_purchase_id = serializers.PrimaryKeyRelatedField(queryset=PurchasedPackage.objects.all())
     class Meta :
         model = JobOpportunity
-        exclude = ['employer' , 'province', 'city' , 'active' , 'status']
+        exclude = ['employer' , 'province', 'city' , 'active' , 'status' , 'stack']
     
     def validate(self , attrs) :
         if self.partial :
@@ -61,6 +67,7 @@ class JobOpportunitySerializer(serializers.ModelSerializer) :
     
     
 class GetJobOpportunitySerializer(serializers.ModelSerializer) :
+    stack = TechnologyCategoryShowSerializer(many=True)
     class Meta :
         model = JobOpportunity
         fields = '__all__'

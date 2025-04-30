@@ -156,7 +156,9 @@ class User(AbstractBaseUser):
         family_name = str(self.family_name) if self.family_name is not None else ''
         return mobile +' - '+ name +' '+ family_name
     
-        
+    def has_perm(self, perm, obj=None):
+        # Custom permission logic
+        return super().has_perm(perm, obj)   
         
         
 

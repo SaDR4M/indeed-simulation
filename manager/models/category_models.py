@@ -21,17 +21,3 @@ class TechnologyCategory(models.Model) :
     updated_at = models.DateTimeField(
         auto_now=True
     )
-    deleted = models.BooleanField(
-        default=False , 
-        help_text="virtual delete"
-    )
-    deleted_by = models.ForeignKey(
-        "account.User" ,
-        on_delete=models.CASCADE ,
-        related_name="categories_deleted" ,
-        blank=True ,
-        null=True
-    )
-    deleted_at = models.DateTimeField(
-        blank=True , null=True
-    )

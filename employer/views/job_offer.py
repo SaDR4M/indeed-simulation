@@ -7,6 +7,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.pagination import LimitOffsetPagination
 # third party 
 from guardian.shortcuts import assign_perm
+from icecream import ic
 # local 
 from employer.serializers import JobOpportunitySerializer , GetJobOpportunitySerializer      
 from employer.models import JobOpportunity
@@ -19,28 +20,40 @@ from employer import docs
 # Create your views here.
 class JobOffer(APIView , FilterJobOpportunityMixin) :
     
-    @docs.job_offer_get_doc
-    @employer_required
-    def get(self , request):
-        # check for employer exist
-        employer = request.employer
-        # check for offers to exist
-        job_opportunities = JobOpportunity.objects.filter(employer=employer)
-        # if not job_opportunities.exists() :
-        #     return Response(data={"detail" : "there is no opportunity for this employer"})
-        # if not user.has_perm('view_jobopportunity' , job_opportunities) :
-        #     return Response(data={"detail" : "user does not have permissions for this action"} , status=HTTP_403_FORBIDDEN)
-
-        filter_job_offers = self.filter_job_opportunity(job_opportunities)
-        if isinstance(filter_job_offers , Response) :
-            return filter_job_offers
-        
-        # paginate the data
-        paginator = LimitOffsetPagination()
-        paginator.paginate_queryset(filter_job_offers , request)
-        
-        serializer = GetJobOpportunitySerializer(filter_job_offers , many=True)
-        return Response(data={"detail" : serializer.data } , status=HTTP_400_BAD_REQUEST)
+    def get(self , request) :
+        """Get job offer data"""
+        job_offer_id = request.query_params.get("job_offer")
+        if not job_offer_id :
+            return Response(
+                data = {
+                    "succeeded" : False,
+                    "show" : False,
+                    "en_detail" : "job offer must be entered",
+                },
+                status = HTTP_400_BAD_REQUEST
+            )
+        try :
+            job_offer = JobOpportunity.objects.filter(id=job_offer_id)
+        except JobOpportunity.DoesNotExist :
+            return Response(
+                data = {
+                    "succeeded" : False,
+                    "show" : True,
+                    "time" : 3000,
+                    "en_detail" : "job offer does not exists",
+                    "fa_detail" : "فرصت شغلی مد نظر یافت نشد"
+                },
+                status = HTTP_400_BAD_REQUEST
+            )
+        serializer = GetJobOpportunitySerializer(job_offer.first())
+        return Response(
+            data = {
+                "succeeded" : True,
+                "show" : False,
+                "data" : serializer.data 
+            }
+        )
+    
     
     
     @docs.job_offer_post_doc
@@ -85,7 +98,8 @@ class JobOffer(APIView , FilterJobOpportunityMixin) :
                     } , 
                 status=HTTP_404_NOT_FOUND)
         # create the offer
-        response = create_offer(request , purchased_packages , employer)
+        stacks = request.data.get('stack').split(",")
+        response = create_offer(request , purchased_packages , employer , stacks)
         return response
 
     
@@ -117,7 +131,10 @@ class JobOffer(APIView , FilterJobOpportunityMixin) :
             return Response(
                 data={
                     "succeeded" : False,
-                    "en_detail" : "offer was not found"
+                    "show" : True,
+                    "time" : 3000,
+                    "en_detail" : "offer was not found",
+                    "fa_detail" : "فرصت شغلی پیدا نشد"
                 } ,
                 status=HTTP_404_NOT_FOUND
             )
@@ -126,11 +143,18 @@ class JobOffer(APIView , FilterJobOpportunityMixin) :
             return Response(
                 data={
                     "succeeded" : False,
-                    "en_detail" : "user does not have permissions for this action"
+                    "show" : True,
+                    "time" : 3000,
+                    "en_detail" : "user does not have permissions for this action",
+                    "fa_detail" : "کاربر مجاز نیست"
                 } , 
                 status=HTTP_403_FORBIDDEN
             )
-        
+        # get stack if exists
+        stacks = request.data.get('stacks')
+        if stacks :
+            stacks_list = stacks.split(",")
+            request.data['stacks'] = stacks_list
         response = update_offer(request)
         return response
     
@@ -144,31 +168,45 @@ class JobOffer(APIView , FilterJobOpportunityMixin) :
         # check if there is a offer or not
         if not offer_id :
             return Response(data={"en_detail" : "enter the offer id"} , status=HTTP_400_BAD_REQUEST)
-        
-        # check user permission
-        if not user.has_perm("delete_jobopportunity") :
-            return Response(
-                data={
-                    "succeeded" : False,
-                    "en_detail" : "employer does not have permission to do this action"
-                    } , 
-                status=HTTP_403_FORBIDDEN
-                )
-
-        # virtual delete
-        offer = JobOpportunity.objects.filter(pk=offer_id)
+        # get the offer
+        offer = JobOpportunity.objects.filter(employer__user = user , pk=offer_id)
         if not offer.exists() :
             return Response(
                 data={
                     "succeeded" : False,
-                    "en_detail" : "offer does not exists" 
+                    "show" : True,
+                    "time" : 3000,
+                    "en_detail" : "offer does not exists",
+                    "fa_detail" : "فرصت شغلی وجود ندارد"
                 }
                 , 
                 status=HTTP_400_BAD_REQUEST
             )
+        # check user permission
+        # if not user.has_perm("delete_jobopportunity"  , offer.first()) :
+        #     return Response(
+        #         data={
+        #             "succeeded" : False,
+        #             "show" : True,
+        #             "time" : 3000,
+        #             "en_detail" : "employer does not have permission to do this action",
+        #             "fa_detail" : "کاربر مجاز نیست"
+        #             } , 
+        #         status=HTTP_403_FORBIDDEN
+        #         )
+
+
         # update the offer
-        offer.update(active=False , expire_at = datetime.datetime.now().strftime('%Y-%m-%d'))
-        return Response(data={"detail" : "deleted successfully" } , status=HTTP_200_OK)
+        offer.update(deleted=True , expire_at = datetime.datetime.now().strftime('%Y-%m-%d'))
+        return Response(
+            data={
+                "succeeded" : True,
+                "time" : 3000,
+                "en_detail" : "job offer has beendeleted successfully" ,
+                "fa_detail" : "موقعیت شغلی با موفقیت حذف شد"
+            } , 
+            status=HTTP_200_OK
+            )
     
     
     
@@ -190,4 +228,25 @@ class AllJobOffers(APIView  , FilterJobOpportunityMixin) :
         serializer = GetJobOpportunitySerializer(filtered_job_offer , many=True)
         return Response(data={"detail" : serializer.data } , status=HTTP_200_OK)
     
-    
+class JobOfferList(APIView , FilterJobOpportunityMixin) :
+    @docs.job_offer_get_doc
+    @employer_required
+    def get(self , request):
+        # check for employer exist
+        employer = request.employer
+        # check for offers to exist
+        job_opportunities = JobOpportunity.objects.filter(employer=employer , deleted=False)
+        # if not job_opportunities.exists() :
+        #     return Response(data={"detail" : "there is no opportunity for this employer"})
+        # if not user.has_perm('view_jobopportunity' , job_opportunities) :
+        #     return Response(data={"detail" : "user does not have permissions for this action"} , status=HTTP_403_FORBIDDEN)
+
+        filter_job_offers = self.filter_job_opportunity(job_opportunities)
+        if isinstance(filter_job_offers , Response) :
+            return filter_job_offers
+        
+        # paginate the data
+        paginator = LimitOffsetPagination()
+        paginator.paginate_queryset(filter_job_offers , request)
+        serializer = GetJobOpportunitySerializer(filter_job_offers , many=True)
+        return Response(data={"detail" : serializer.data } , status=HTTP_200_OK)

@@ -1,4 +1,5 @@
 import random
+from datetime import timedelta
 # django & rest imports
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK , HTTP_201_CREATED , HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
@@ -14,7 +15,8 @@ from employer.serializers import (
     ChangeEmployerInterviewScheduleSerializer ,
     ViewedResumeSerializer ,
     AppliedViewedResumeSerializer,
-    ChangeApllyStatusSerializer
+    ChangeApllyStatusSerializer,
+    JobOpportunityUpdateSerializer
 )
 from employer import tasks
 from account.models import Message
@@ -119,7 +121,7 @@ def create_employer(request:object) -> Response:
     return Response(data={"errors" : serializer.errors} , status=HTTP_400_BAD_REQUEST)
 
 
-def create_offer(request:object , purchased_packages:object , employer:object) -> Response :
+def create_offer(request:object , purchased_packages:object , employer:object , stacks:list) -> Response :
     """Create job opportunity"""
     
     serializer = JobOpportunitySerializer(data=request.data)
@@ -137,11 +139,11 @@ def create_offer(request:object , purchased_packages:object , employer:object) -
         if isinstance(city , Response) :
             return city
                 
-        offer = serializer.save(employer=employer , city=city , province=province)
+        offer = serializer.save(employer=employer , city=city , province=province , stack=stacks) 
         purchased_packages.remaining -= 1
         purchased_packages.save()
         message = Message.objects.create(type="expire" , kind="email" , email=user.email)
-        warning_eta = offer.expire_at - datetime.timedelta(hours=2)
+        warning_eta = offer.expire_at - timedelta(hours=2)
         tasks.expire_job_offer_warning.apply_async(args=[offer.pk , message.pk] , eta=warning_eta)
         tasks.expire_job_offer.apply_async(args=[offer.pk  ,message.pk] , eta=offer.expire_at)
         # offer.remaining -= 1
@@ -157,13 +159,17 @@ def create_offer(request:object , purchased_packages:object , employer:object) -
 def update_offer(request:object , job_opportunity:object , employer:object) -> Response :
     """Update job opportunity data"""
     
-    serializer = JobOpportunitySerializer(job_opportunity , data=request.data , partial=True)
+    serializer = JobOpportunityUpdateSerializer(job_opportunity , data=request.data , partial=True)
     if serializer.is_valid() :
         serializer.save(employer=employer)
         return Response(
                 data={
+                    "succeeded" : True,
+                    "show" : True,
+                    "time" : 3000,
+                    "en_detail" : "job offer has been updated succesfully",
+                    "fa_detail" : "موقعیت شغلی با موفقیت آپدیت شد",
                     "data" : serializer.data ,
-                    "detail" : "job offer updated succesfully"
                 }, 
                 status=HTTP_200_OK
             )

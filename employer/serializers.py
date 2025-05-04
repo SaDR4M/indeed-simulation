@@ -68,9 +68,14 @@ class JobOpportunitySerializer(serializers.ModelSerializer) :
     
 class GetJobOpportunitySerializer(serializers.ModelSerializer) :
     stack = TechnologyCategoryShowSerializer(many=True)
+    priority = serializers.SerializerMethodField()
     class Meta :
         model = JobOpportunity
         fields = '__all__'
+        
+    def get_priority(self , instance) :
+        if instance.package :
+            return instance.package.priority
    
     
 class ViewedResumeSerializer(serializers.ModelSerializer) :

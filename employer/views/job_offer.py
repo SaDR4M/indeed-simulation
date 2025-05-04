@@ -210,24 +210,6 @@ class JobOffer(APIView , FilterJobOpportunityMixin) :
     
     
     
-class AllJobOffers(APIView  , FilterJobOpportunityMixin) :
-
-    @docs.all_offers_get_doc
-    def get(self , request):
-        """List of all job offers"""
-        job_opportunities = JobOpportunity.objects.all()
-        
-        filtered_job_offer = self.filter_job_opportunity(job_opportunities)
-        if isinstance(filtered_job_offer , Response) :
-            return filtered_job_offer
-        
-        # paginate the data
-        paginator = LimitOffsetPagination() 
-        paginator.paginate_queryset(filtered_job_offer , request)
-        
-        serializer = GetJobOpportunitySerializer(filtered_job_offer , many=True)
-        return Response(data={"detail" : serializer.data } , status=HTTP_200_OK)
-    
 class JobOfferList(APIView , FilterJobOpportunityMixin) :
     @docs.job_offer_get_doc
     @employer_required

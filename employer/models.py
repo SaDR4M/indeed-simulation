@@ -78,6 +78,10 @@ class JobOpportunity(models.Model):
     created_at = models.DateTimeField(
         auto_now_add=True
     )
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
     province = models.ForeignKey(Provinces , 
         related_name="job_states" ,
         on_delete=models.CASCADE , 
@@ -109,7 +113,13 @@ class JobOpportunity(models.Model):
         choices=WorkModeChoices,
         default=WorkModeChoices.ONSITE
     )
-    
+    package = models.ForeignKey(
+        "package.Package",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="package_job_opportunities"
+    )
     # i changed the data type of this column manually in the DB
     expire_at = models.DateTimeField()
 

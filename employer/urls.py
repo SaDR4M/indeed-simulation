@@ -7,7 +7,6 @@ urlpatterns = [
     path('data/' , views.EmployerDataApiView.as_view() , name="employer_data"),
     path('job-offer/' , views.JobOffer.as_view() , name="employer_job_offer"),
     path('employer-job-offers/' , views.JobOfferList.as_view()),
-    path('all-job-offers/' , views.AllJobOffers.as_view() , name="employer_job_offers"),
     path('all-resumes/' , views.AllResumes.as_view() , name="all_resumes"),
     path('job-applies/' , views.ResumesForOffer.as_view() , name="resume_applies"),
     path('view-resume/' , views.ResumeViewer.as_view() , name="view_resume"),

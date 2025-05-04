@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.status import HTTP_403_FORBIDDEN , HTTP_200_OK
 # third party imports
 from icecream import ic
 from drf_yasg import openapi
@@ -26,8 +27,8 @@ from job_seeker.models import Test , Question , JobSeeker
 from job_seeker.serializers import TestSerializer , QuestionSerializer , JobSeekerDataSerialzier
 
 from employer.models import JobOpportunity , Employer
-from employer.serializers import JobOpportunitySerializer
-from employer.mixins import FilterEmployerMixin
+from employer.serializers import JobOpportunitySerializer , GetJobOpportunitySerializer
+from employer.mixins import FilterEmployerMixin , FilterJobOpportunityMixin
 
 from manager.models import TechnologyCategory
 from manager.serializer import (
@@ -529,24 +530,24 @@ class JobSeekersMng(APIView , JobSeekerFilterMixin) :
 # EMPLOYERS 
 
 class ChangeJobOfferStatus(APIView) :
-    @swagger_auto_schema(
-        operation_id="change job offer status",
-        operation_summary="change the job opportunity status",
-        operation_description="only admins can change the job opportunity status",
-        request_body=JobOpportunitySerializer,
-        responses={
-            200 : JobOpportunitySerializer,
-            400 : "invalid parameters",
-            404 : "employer/offer was not found",
-        },
-        security=[{"Bearer" : []}]
-    )
+    # @swagger_auto_schema(
+    #     operation_id="change job offer status",
+    #     operation_summary="change the job opportunity status",
+    #     operation_description="only admins can change the job opportunity status",
+    #     request_body=JobOpportunitySerializer,
+    #     responses={
+    #         200 : JobOpportunitySerializer,
+    #         400 : "invalid parameters",
+    #         404 : "employer/offer was not found",
+    #     },
+    #     security=[{"Bearer" : []}]
+    # )
     def patch(self , request) :
         user = request.user
         offer_id = request.data.get('offer_id')
         status = request.data.get('status')
         # only admins can change the offer status
-        if not user.is_superuser :
+        if user.role != 10 :
             return Response(data={"detail" : "user does not have permission to do this action"} , status=status.HTTP_403_FORBIDDEN) 
              
         if not offer_id :
@@ -559,17 +560,19 @@ class ChangeJobOfferStatus(APIView) :
         if not job_opportunity.exists() :
             return Response(data={"detail" : "there is no job opportunity with this information"} , status=status.HTTP_404_NOT_FOUND)
         
-        
-        serializer = JobOpportunitySerializer(job_opportunity.first() , data=request.data , partial=True)
-        if serializer.is_valid() :
-            data = serializer.validated_data
-            status = data['status']
-            # change the active to true if the offer is approved by the admin
-            if status == "approved" :
-                data['active'] = True
-            serializer.save()
-            return Response(data={"success" : True , "data" : serializer.data} , status=status.HTTP_200_OK)
-        return Response(data={"success" : False , "errors" : serializer.errors} , status=status.HTTP_200_OK)
+        job_offer = job_opportunity.first()
+        job_offer.status = status
+        job_offer.save()
+        return Response(
+            data = {
+                "succeeded" : True,
+                "show" : True,
+                "time" : 30000,
+                "en_detail" : "offer status has been updated successfully",
+                "fa_detail" : "وضعیت موفقیت شغلی با موفقیت تغییر یافت"
+            },
+            status = HTTP_200_OK
+        )
 
 # admins change the price of the package
 # the package will be deleted and then with that package info and new price a new package will be created
@@ -809,3 +812,26 @@ class TechnologyCategoryMngApiView(APIView) :
             },
             status=status.HTTP_200_OK
         )
+
+class AllJobOffers(APIView  , FilterJobOpportunityMixin) :
+
+    # @docs.all_offers_get_doc
+    def get(self , request):
+        """List of all job offers"""
+        user = request.user
+        if user.role != 10 :
+            return Response(
+                status=HTTP_403_FORBIDDEN
+            )
+        job_opportunities = JobOpportunity.objects.all()
+        
+        filtered_job_offer = self.filter_job_opportunity(job_opportunities)
+        if isinstance(filtered_job_offer , Response) :
+            return filtered_job_offer
+        
+        # paginate the data
+        paginator = LimitOffsetPagination() 
+        paginator.paginate_queryset(filtered_job_offer , request)
+        
+        serializer = GetJobOpportunitySerializer(filtered_job_offer , many=True)
+        return Response(data={"detail" : serializer.data } , status=HTTP_200_OK)

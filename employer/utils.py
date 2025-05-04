@@ -139,7 +139,7 @@ def create_offer(request:object , purchased_packages:object , employer:object , 
         if isinstance(city , Response) :
             return city
                 
-        offer = serializer.save(employer=employer , city=city , province=province , stack=stacks) 
+        offer = serializer.save(employer=employer , city=city , province=province , stack=stacks , package=purchased_packages.package) 
         purchased_packages.remaining -= 1
         purchased_packages.save()
         message = Message.objects.create(type="expire" , kind="email" , email=user.email)
